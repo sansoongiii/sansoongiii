@@ -14,6 +14,7 @@ public enum MessageType {
 
     CONTINUE_RESPONSE,
     LEAVE_ROOM,
+    DISCONNECT,
 
     // 서버 → 클라이언트
     CONNECTED,
