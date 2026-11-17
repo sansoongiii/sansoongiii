@@ -1,9 +1,15 @@
 package common;
 
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
+
 public final class Protocol {
 	
 	public static final int PORT = 50023;
     public static final String SEPARATOR = ":";
+    public static final String DATA_SEPARATOR = "|";
 
     private Protocol() {
     }
@@ -113,5 +119,42 @@ public final class Protocol {
         }
 
         return result.toString();
+    }
+    
+    // 여러 항목 → Message.data 문자열
+    public static String buildData(String... values) {
+        String[] encoded = new String[values.length];
+
+        for (int i = 0; i < values.length; i++) {
+            String value = values[i] == null ? "" : values[i];
+
+            encoded[i] = URLEncoder.encode(
+                    value,
+                    StandardCharsets.UTF_8
+            );
+        }
+
+        return String.join(DATA_SEPARATOR, encoded);
+    }
+    
+    // Message.data 문자열 → 항목 배열
+    public static String[] parseData(String data) {
+        if (data == null || data.isEmpty()) {
+            return new String[0];
+        }
+
+        String[] values = data.split(
+                Pattern.quote(DATA_SEPARATOR),
+                -1
+        );
+
+        for (int i = 0; i < values.length; i++) {
+            values[i] = URLDecoder.decode(
+                    values[i],
+                    StandardCharsets.UTF_8
+            );
+        }
+
+        return values;
     }
 }
