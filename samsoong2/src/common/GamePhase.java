@@ -1,7 +1,7 @@
 package common;
 
 public enum GamePhase {
-	WAIRING,
+	WAITING,
 	TEXT_WRITING,
 	DRAWING,
 	ANSWERING,
