@@ -28,5 +28,7 @@ public enum MessageType {
     ROOM_LEFT,
     GAME_ABORTED,
 
-    ERROR
+    ERROR,
+    
+    TEST_MESSAGE
 }
