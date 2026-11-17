@@ -26,8 +26,8 @@ public class Message {
     	   }
 		this.type = type;
 		this.roundNumber = roundNumber;
-		this.data = data;
-	}
+		this.data = data == null ? "" : data;	
+		}
     
 
 	public MessageType getType() {

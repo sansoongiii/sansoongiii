@@ -1,5 +1,6 @@
 package server;
 
+import common.Message;
 import java.io.BufferedReader;
 import java.io.PrintWriter;
 import java.net.Socket;
@@ -31,7 +32,7 @@ public class ClientHandler implements Runnable {
         // 연결 종료 시 close() 호출
     }
 
-    public synchronized void send(String message) {
+    public synchronized void send(Message message) {
         // 해당 클라이언트에게 전송
     }
 
