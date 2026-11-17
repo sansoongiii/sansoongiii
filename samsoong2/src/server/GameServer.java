@@ -55,7 +55,13 @@ public class GameServer implements GameMessageSender{
     }
 
     public void removeClient(String playerId) {
-        // 연결 목록에서 제거
+        ClientHandler removed = clients.remove(playerId);
+
+        if (removed != null) {
+            System.out.println(
+                    "연결 목록에서 제거: " + playerId
+            );
+        }
     }
 
     public void stop() {
@@ -63,15 +69,27 @@ public class GameServer implements GameMessageSender{
         // 모든 클라이언트 연결 종료
     }
 
-	@Override
-	public void sendTo(String playerId, Message message) {
-		// TODO Auto-generated method stub
-		
-	}
+    @Override
+    public void sendTo(String playerId, Message message) {
+        ClientHandler handler = clients.get(playerId);
 
-	@Override
-	public void sendToPlayers(Iterable<String> playerIds, Message message) {
-		// TODO Auto-generated method stub
-		
-	}
+        if (handler == null) {
+            System.out.println(
+                    "전송 대상이 없습니다: " + playerId
+            );
+            return;
+        }
+
+        handler.send(message);
+    }
+
+    @Override
+    public void sendToPlayers(
+            Iterable<String> playerIds,
+            Message message) {
+
+        for (String playerId : playerIds) {
+            sendTo(playerId, message);
+        }
+    }
 }
