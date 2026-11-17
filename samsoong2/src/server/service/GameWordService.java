@@ -1,10 +1,10 @@
-//DB에 조회 요청 전달하는 QuizRepository.java 필요함
-
 package server.service;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+
+import server.QuizDto;
+import server.QuizRepository;
 
 public class GameWordService {
     private final QuizRepository quizRepository;
@@ -14,7 +14,7 @@ public class GameWordService {
     }
 
     public String getRandomWord(String category) {
-        List<Quiz> quizzes =
+        List<QuizDto> quizzes =
             quizRepository.findByCategory(category);
 
         if (quizzes.isEmpty()) {
@@ -30,6 +30,6 @@ public class GameWordService {
     }
 
     public List<String> getCategories() {
-        return quizRepository.findAllCategories();
+        return quizRepository.findCategories();
     }
 }
