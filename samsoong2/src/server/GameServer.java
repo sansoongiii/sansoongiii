@@ -1,10 +1,17 @@
 package server;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.net.ServerSocket;
+import common.GameMessageSender;
+import common.Message;
+import common.Protocol;
 
-public class GameServer {
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+
+public class GameServer implements GameMessageSender{
 
     public static final int PORT = 50023;
     
@@ -14,11 +21,27 @@ public class GameServer {
     private final Map<String, ClientHandler> clients =
             new ConcurrentHashMap<>();
 
-    public void start() {
+    public void start() throws IOException {
         // ServerSocket 생성
-        // accept()로 접속 수락
-        // ClientHandler 생성 및 연결 목록 등록
-        // 별도 스레드에서 실행
+    	serverSocket = new ServerSocket(Protocol.PORT);
+    	running = true;
+    	System.out.println("서버 시작: 포트 " + Protocol.PORT);
+
+    	while (running) {
+	        // accept()로 접속 수락
+			Socket socket = serverSocket.accept();
+			String playerId = UUID.randomUUID().toString();
+			
+	        // ClientHandler 생성 및 연결 목록 등록
+			ClientHandler handler = new ClientHandler(playerId, socket, this);
+			clients.put(playerId, handler);
+			
+			// 별도 스레드에서 실행
+			Thread thread = new Thread(handler);
+			thread.start();
+			
+			System.out.println("클라이언트 접속: " + playerId);
+		}     
     }
 
     public void sendTo(String playerId, String message) {
@@ -39,4 +62,16 @@ public class GameServer {
         // 접속 대기 종료
         // 모든 클라이언트 연결 종료
     }
+
+	@Override
+	public void sendTo(String playerId, Message message) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void sendToPlayers(Iterable<String> playerIds, Message message) {
+		// TODO Auto-generated method stub
+		
+	}
 }
