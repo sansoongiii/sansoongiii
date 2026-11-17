@@ -17,7 +17,7 @@ public class ConnectionController {
 
     // 서버 연결 요청
     public void connect(String serverIp) throws IOException {
-        if (serverIp == null || serverIp.isBlank()) {
+        if (serverIp == null) {
             throw new IllegalArgumentException("서버 IP를 입력해야 합니다.");
         }
         gameClient.connect(serverIp);
@@ -52,7 +52,7 @@ public class ConnectionController {
     }
 
     public void selectCategory(String category) throws IOException {
-        if (category == null || category.isBlank()) {
+        if (category == null) {
             throw new IllegalArgumentException("카테고리를 선택해야 합니다.");
         }
         Message message = createMessage(MessageType.SELECT_CATEGORY);
@@ -62,7 +62,7 @@ public class ConnectionController {
 
     // 게임 진행 요청
     public void submitText(int roundNumber, String textDescription) throws IOException {
-        if (textDescription == null || textDescription.isBlank()) {
+        if (textDescription == null) {
             throw new IllegalArgumentException("설명 내용을 입력해야 합니다.");
         }
         Message message = createMessage(MessageType.SUBMIT_TEXT);
@@ -72,7 +72,7 @@ public class ConnectionController {
     }
 
     public void submitDrawing(int roundNumber, byte[] drawingData) throws IOException {
-        if (drawingData == null || drawingData.length == 0) {
+        if (drawingData == null) {
             throw new IllegalArgumentException("전송할 그림 데이터가 없습니다.");
         }
         Message message = createMessage(MessageType.SUBMIT_DRAWING);
@@ -82,7 +82,7 @@ public class ConnectionController {
     }
 
     public void submitAnswer(int roundNumber, String submittedAnswer) throws IOException {
-        if (submittedAnswer == null || submittedAnswer.isBlank()) {
+        if (submittedAnswer == null) {
             throw new IllegalArgumentException("정답을 입력해야 합니다.");
         }
         Message message = createMessage(MessageType.SUBMIT_ANSWER);
