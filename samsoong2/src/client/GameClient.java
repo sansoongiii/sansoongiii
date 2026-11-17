@@ -38,18 +38,30 @@ public class GameClient {
         } catch (IOException e) {
             socket.close();
             throw e;
-        }    	
-    	
+        }    	 	
     }
 
     public void startReceiving() {
-        // ClientReceiver 생성
-        // 별도 스레드에서 실행
-        // 중복 실행 방지
+        if (!connected) {
+			throw new IllegalStateException("먼저 서버에 연결해야 합니다.");
+		}
+        if (receiveThread != null) {
+        	return;
+		}
+        ClientReceiver receiver = new ClientReceiver(reader, this);
+        receiveThread = new Thread(receiver, "client-receiver");
+        receiveThread.start();
     }
 
-    public synchronized void send(Message message) {
+    public synchronized void send(Message message) throws IOException {
         // 서버에 메시지 전송
+    	if (!connected) {
+			throw new IOException("서버에 연결되어 있지 않습니다.");
+		}
+    	writer.println(Protocol.build(message));
+    	if (writer.checkError()) {
+			throw new IOException("메시지 전송에 실패했습니다.");
+		}
     }
 
     public boolean isConnected() {
@@ -57,7 +69,15 @@ public class GameClient {
     }
 
     public void close() {
-        // 연결 상태 변경
-        // Socket 종료
+        connected = false;
+        
+        try {
+			if(socket != null) {
+				socket.close();
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			System.out.println("연결 종료 오류: " + e.getMessage());
+		}
     }
 }
