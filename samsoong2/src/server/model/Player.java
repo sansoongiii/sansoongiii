@@ -6,7 +6,7 @@ public class Player {
     private String role;
     private boolean connected;
 
-    public Player(String playerId, String name) {
+    public Player(String playerId) {
     	if (playerId == null || playerId.isBlank()) {
             throw new IllegalArgumentException("플레이어 ID는 필수입니다.");
         }
