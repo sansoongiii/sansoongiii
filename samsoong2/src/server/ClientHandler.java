@@ -46,29 +46,14 @@ public class ClientHandler implements Runnable {
     		server.sendTo(playerId, connectedMessage); 
     		
     		String line;
+    		
     		while ((line = reader.readLine()) != null) {
 				try {
 					Message message = Protocol.parse(line);
-
-					System.out.println("보낸 참가자: " + playerId);
-					System.out.println("메시지 종류: " + message.getType());
-
-					if (message.getType() == MessageType.JOIN_ROOM) {
-					    System.out.println(
-					            "요청한 방 코드: " + message.getRoomCode()
-					    );
-					}
-
-					// 임시 통신 응답 — 실제 입장 성공을 의미하지 않음
-					Message response = new Message();
-					response.setType(MessageType.TEST_MESSAGE);
-					response.setRoundNumber(message.getRoundNumber());
-					response.setNotice(
-					        "요청 수신 확인: " + message.getType().name()
-					);
-
-					server.sendTo(playerId, response);
 					
+					// 로그·응답 처리를 GameServer에 위임
+	                server.handleMessage(playerId, message);
+	                
 				} catch (IllegalArgumentException e) {
 					System.out.println("잘못된 메시지: " + e.getMessage());
 				}
