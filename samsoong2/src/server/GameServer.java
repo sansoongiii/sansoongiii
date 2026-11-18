@@ -47,15 +47,6 @@ public class GameServer implements GameMessageSender{
 		}     
     }
 
-    public void sendTo(String playerId, String message) {
-        // 특정 참가자에게 전송
-    }
-
-    public void sendToPlayers(
-            Iterable<String> playerIds, String message) {
-        // 지정된 참가자들에게 전송
-        // 예: 같은 방의 참가자 전체
-    }
 
     public void removeClient(String playerId) {
         ClientHandler removed = clients.remove(playerId);
