@@ -39,26 +39,35 @@ public class ClientHandler implements Runnable {
     		writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
     		
     		connected = true;
-    		server.sendTo(playerId, new Message(MessageType.CONNECTED, playerId));
+    		Message connectedMessage = new Message();
+    		connectedMessage.setType(MessageType.CONNECTED);
+    		connectedMessage.setPlayerId(playerId);
+
+    		server.sendTo(playerId, connectedMessage); 
     		
     		String line;
     		while ((line = reader.readLine()) != null) {
 				try {
 					Message message = Protocol.parse(line);
+
 					System.out.println("보낸 참가자: " + playerId);
 					System.out.println("메시지 종류: " + message.getType());
-					System.out.println("데이터: " + message.getData());
-	
-					// 임시 테스트: 요청자에게만 응답
-					server.sendTo(
-					        playerId,
-					        new Message(
-					                MessageType.TEST_MESSAGE,
-					                message.getRoundNumber(),
-					                "요청 수신 확인: "
-					                        + message.getType().name()
-					        )
+
+					if (message.getType() == MessageType.JOIN_ROOM) {
+					    System.out.println(
+					            "요청한 방 코드: " + message.getRoomCode()
+					    );
+					}
+
+					// 임시 통신 응답 — 실제 입장 성공을 의미하지 않음
+					Message response = new Message();
+					response.setType(MessageType.TEST_MESSAGE);
+					response.setRoundNumber(message.getRoundNumber());
+					response.setNotice(
+					        "요청 수신 확인: " + message.getType().name()
 					);
+
+					server.sendTo(playerId, response);
 					
 				} catch (IllegalArgumentException e) {
 					System.out.println("잘못된 메시지: " + e.getMessage());
