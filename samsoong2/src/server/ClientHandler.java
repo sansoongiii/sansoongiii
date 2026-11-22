@@ -39,27 +39,21 @@ public class ClientHandler implements Runnable {
     		writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
     		
     		connected = true;
-    		server.sendTo(playerId, new Message(MessageType.CONNECTED, playerId));
+    		Message connectedMessage = new Message();
+    		connectedMessage.setType(MessageType.CONNECTED);
+    		connectedMessage.setPlayerId(playerId);
+
+    		server.sendTo(playerId, connectedMessage); 
     		
     		String line;
+    		
     		while ((line = reader.readLine()) != null) {
 				try {
 					Message message = Protocol.parse(line);
-					System.out.println("보낸 참가자: " + playerId);
-					System.out.println("메시지 종류: " + message.getType());
-					System.out.println("데이터: " + message.getData());
-	
-					// 임시 테스트: 요청자에게만 응답
-					server.sendTo(
-					        playerId,
-					        new Message(
-					                MessageType.TEST_MESSAGE,
-					                message.getRoundNumber(),
-					                "요청 수신 확인: "
-					                        + message.getType().name()
-					        )
-					);
 					
+					// 로그·응답 처리를 GameServer에 위임
+	                server.handleMessage(playerId, message);
+	                
 				} catch (IllegalArgumentException e) {
 					System.out.println("잘못된 메시지: " + e.getMessage());
 				}

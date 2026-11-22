@@ -1,7 +1,7 @@
 package client;
 
 import java.util.*;
-import common.Message;
+import common.Message; // 통합 시에 패키지 제대로 불러오게 해줘야 함 (독립으로 시행 시 오류로 뜸)
 import common.PlayerRole;
 
 public class GameController {
@@ -23,7 +23,7 @@ public class GameController {
         System.out.printf("[라운드 %d 시작] 단계: %s | 내 역할: %s%n",
                 message.getRoundNumber(), message.getPhase(), message.getRole());
 
-        if (PlayerRole.TEXT_WRITER.equals(message.getRole())) {
+        if (PlayerRole.TEXT_WRITER.name().equals(message.getRole())) {
             System.out.println("제시어: " + message.getAnswer());
         } else {
             System.out.println("다른 플레이어가 설명을 작성 중입니다..."); // 첫 번째 순서 외의 화면
