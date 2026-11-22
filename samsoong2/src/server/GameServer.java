@@ -280,10 +280,10 @@ public class GameServer implements GameMessageSender{
             return;
         }
 
-        if (!playerId.equals(room.getHostPlayerId())) {
+        /* if (!playerId.equals(room.getHostPlayerId())) {
             sendError(playerId, "NOT_HOST", "방장만 카테고리를 선택할 수 있습니다.");
             return;
-        }
+        } */
 
         if (room.getPlayers().size() != 3) {
             sendError(playerId, "INVALID_PLAYER_COUNT", "3명이 모두 입장해야 합니다.");
@@ -302,10 +302,10 @@ public class GameServer implements GameMessageSender{
             return;
         }
 
-        room.setCategory(category);
+        /* room.setCategory(category);
         System.out.println(
                 "카테고리 선택 완료: " + room.getRoomCode() + " / " + category
-        );
+        ); */
 
         sendRoomUpdated(room);
     }
