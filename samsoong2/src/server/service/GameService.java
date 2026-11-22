@@ -1,5 +1,6 @@
 package server.service;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -36,6 +37,10 @@ public class GameService {
         this.gameMessageSender = Objects.requireNonNull(gameMessageSender);
     }
 
+    public List<String> getCategories() {
+        return gameWordService.getCategories();
+    }
+    
     public GameRound startGame(GameRoom room,String category) {
         if (!room.canStart()) {
             throw new IllegalStateException("플레이어 3명이 모두 입장해야 게임을 시작할 수 있습니다.");

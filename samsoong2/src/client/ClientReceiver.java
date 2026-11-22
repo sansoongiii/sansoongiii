@@ -54,6 +54,7 @@ public class ClientReceiver implements Runnable {
                 break;
 
             case CATEGORY_LIST:
+            	client.receiveCategories(message.getCategories());
                 System.out.println(
                         "[카테고리] " + message.getCategories()
                 );
