@@ -14,9 +14,7 @@ public class ClientMain {
     public static void main(String[] args) {
 
     	GameClient client = new GameClient();
-    	
-    	BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
-    	
+    	    	
     	try {
             client.connect("127.0.0.1");
             client.startReceiving();

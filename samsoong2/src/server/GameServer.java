@@ -33,8 +33,6 @@ public class GameServer implements GameMessageSender{
 
     private final Map<String, ClientHandler> clients = new ConcurrentHashMap<>();
     private final GameRoomService gameRoomService = new GameRoomService();
-
-    private final GameRoomService gameRoomService = new GameRoomService();
     private final GameService gameService;
 	private GameTimerService gameTimerService;
     
