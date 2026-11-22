@@ -11,6 +11,9 @@ import java.net.Socket;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class GameClient {
 
@@ -20,6 +23,7 @@ public class GameClient {
     private BufferedReader reader;
     private PrintWriter writer;
     private Thread receiveThread;
+    private final BlockingQueue<List<String>> categoryQueue = new LinkedBlockingQueue<>();
 
     private volatile boolean connected = false;
 
@@ -79,5 +83,13 @@ public class GameClient {
 			// TODO Auto-generated catch block
 			System.out.println("연결 종료 오류: " + e.getMessage());
 		}
+    }
+    
+    public void receiveCategories(List<String> categories) {
+        categoryQueue.offer(List.copyOf(categories));
+    }
+
+    public List<String> waitForCategories() throws InterruptedException {
+        return categoryQueue.take();
     }
 }

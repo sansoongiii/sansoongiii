@@ -15,6 +15,8 @@ public class GameRoom {
     private GameRound currentRound;
     private String phase = GamePhase.WAITING.name();
 
+    private String category = "";
+    
     public GameRoom(String roomCode) {
         if (roomCode == null || roomCode.isBlank()) {
             throw new IllegalArgumentException("방 코드는 필수입니다.");
@@ -38,6 +40,15 @@ public class GameRoom {
         }
 
         players.add(player);
+    }
+    
+    public String getHostPlayerId() {
+        if (players.isEmpty()) {
+            return null;
+        }
+
+        // 첫 번째 참가자가 방장
+        return players.get(0).getPlayerId();
     }
 
     public boolean canStart() {
@@ -66,5 +77,16 @@ public class GameRoom {
 
     public void setPhase(String phase) {
         this.phase = phase;
+    }
+    
+    public String getCategory() {
+        return category;
+    }
+    public void setCategory(String category) {
+        if (category == null || category.isBlank()) {
+            throw new IllegalArgumentException("카테고리는 필수입니다.");
+        }
+
+        this.category = category;
     }
 }
