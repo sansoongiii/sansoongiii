@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -25,14 +27,12 @@ import server.model.GameRoom;
 import server.model.Player;
 
 public class GameServer implements GameMessageSender{
-
-    public static final int PORT = 50023;
     
     private ServerSocket serverSocket;
     private volatile boolean running = false;
 
-    private final Map<String, ClientHandler> clients =
-            new ConcurrentHashMap<>();
+    private final Map<String, ClientHandler> clients = new ConcurrentHashMap<>();
+    private final GameRoomService gameRoomService = new GameRoomService();
 
     private final GameRoomService gameRoomService = new GameRoomService();
     private final GameService gameService;
@@ -233,10 +233,7 @@ public class GameServer implements GameMessageSender{
     }
 
     @Override
-    public void sendToPlayers(
-            Iterable<String> playerIds,
-            Message message) {
-
+    public void sendToPlayers(Iterable<String> playerIds, Message message) {
         for (String playerId : playerIds) {
             sendTo(playerId, message);
         }
