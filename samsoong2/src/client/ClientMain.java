@@ -17,17 +17,19 @@ public class ClientMain {
 
     	GameClient client = new GameClient();
     	
+    	BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
+    	
     	try {
             client.connect("127.0.0.1");
             client.startReceiving();
+        
+            BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
+            System.out.println("1: 방 생성 / 2: 방 입장");
+            String choice = keyboard.readLine();
 
             Message request = new Message();
             
             boolean isHost = false;
-
-            BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
-            System.out.println("1: 방 생성 / 2: 방 입장");
-            String choice = keyboard.readLine();
             
             if ("1".equals(choice)) {
 				request.setType(MessageType.CREATE_ROOM);
@@ -121,7 +123,7 @@ public class ClientMain {
 
         } catch (IOException e) {
             System.out.println(
-                    "연결 또는 전송 실패: " + e.getMessage()
+                    "연결 또는 입출력 오류: " + e.getMessage()
             );
 
             client.close();
