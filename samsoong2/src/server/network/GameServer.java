@@ -1,4 +1,4 @@
-package server;
+package server.network;
 
 import common.GameMessageSender;
 import common.Message;

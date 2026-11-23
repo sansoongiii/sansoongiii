@@ -1,9 +1,11 @@
-package server;
+package server.repo;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
+
+import server.db.DBManager;
 
 public class PlayerRepository {
 

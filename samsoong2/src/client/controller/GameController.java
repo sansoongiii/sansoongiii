@@ -1,4 +1,4 @@
-package client;
+package client.controller;
 
 import java.util.*;
 import common.Message; // 통합 시에 패키지 제대로 불러오게 해줘야 함 (독립으로 시행 시 오류로 뜸)
