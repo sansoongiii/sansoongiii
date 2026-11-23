@@ -7,21 +7,25 @@ import java.util.List;
 
 public class PlayerRepository {
 
-    // 접속한 사람들 아이디 플레이어 테이블에 삽입
-    public boolean savePlayers(List<String> playerIds) {
+    // 게임 시작 시 접속한 플레이어들의 방 코드, 카테고리 및 초기 문제 수(0, 0) 삽입
+    public boolean savePlayers(List<String> playerIds, String roomCode, String category) {
         Connection conn = DBManager.getConnection();
         if (conn == null) return false;
 
         PreparedStatement pstmt = null;
-        String joinedPlayers = "[\"" + String.join("\",\"", playerIds) + "\"]"; // "player1,player2,player3" 형태
-        String sql = "INSERT INTO player (Player) VALUES (?)";
+        String sql = "INSERT INTO player (PlayerID, RoomCode, Category, RoundCount, CorrectCount) VALUES (?, ?, ?, 0, 0)";
 
         try {
             pstmt = conn.prepareStatement(sql);
-            pstmt.setString(1, joinedPlayers);
+            for (String playerId : playerIds) {
+                pstmt.setString(1, playerId);
+                pstmt.setString(2, roomCode);
+                pstmt.setString(3, category != null ? category : "");
+                pstmt.addBatch();
+            }
 
-            int result = pstmt.executeUpdate();
-            return result > 0;
+            int[] results = pstmt.executeBatch();
+            return results.length > 0;
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
@@ -30,24 +34,24 @@ public class PlayerRepository {
         }
     }
 
-    // 랜덤 배정된 역할을 플레이어 테이블에 업데이트
-    public boolean updateRoles(List<String> playerIds, String noSee, String noHear, String noSpeak) {
+    // 라운드 종료 시 푼 문제 수와 맞춘 문제 수 업데이트
+    public boolean updateRoundResult(List<String> playerIds, boolean isCorrect) {
         Connection conn = DBManager.getConnection();
         if (conn == null) return false;
 
         PreparedStatement pstmt = null;
-        String joinedPlayers = "[\"" + String.join("\",\"", playerIds) + "\"]";
-        String sql = "UPDATE player SET NoSee = ?, NoHear = ?, NoSpeak = ? WHERE Player = ?";
+        String sql = "UPDATE player SET RoundCount = RoundCount + 1, CorrectCount = CorrectCount + ? WHERE PlayerID = ?";
 
         try {
             pstmt = conn.prepareStatement(sql);
-            pstmt.setString(1, noSee);
-            pstmt.setString(2, noHear);
-            pstmt.setString(3, noSpeak);
-            pstmt.setString(4, joinedPlayers);
+            for (String playerId : playerIds) {
+                pstmt.setInt(1, isCorrect ? 1 : 0);
+                pstmt.setString(2, playerId);
+                pstmt.addBatch();
+            }
 
-            int result = pstmt.executeUpdate();
-            return result > 0;
+            int[] results = pstmt.executeBatch();
+            return results.length > 0;
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
