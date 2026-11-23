@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 
 import common.Message;
+import common.PlayerRole;
 import common.Protocol;
 
 public class ClientReceiver implements Runnable {
@@ -70,6 +71,9 @@ public class ClientReceiver implements Runnable {
                 break;
 
             case PHASE_STARTED:
+            	client.setCurrentRole(message.getRole());
+            	client.receivePhaseStarted(message);
+            	
                 System.out.printf(
                         "[라운드 %d] 단계 %s / 역할 %s%n",
                         message.getRoundNumber(),
@@ -77,12 +81,12 @@ public class ClientReceiver implements Runnable {
                         message.getRole()
                 );
 
-                if (message.getAnswer() != null
-                        && !message.getAnswer().isEmpty()) {
-
-                    System.out.println(
-                            "[제시어] " + message.getAnswer()
-                    );
+                if (message.getAnswer() != null && !message.getAnswer().isEmpty()) {
+                    System.out.println("[제시어] " + message.getAnswer());
+                }
+                
+                if (PlayerRole.DRAWER.name().equals(message.getRole()) && message.getTextDescription() != null && !message.getTextDescription().isEmpty()) {
+                    System.out.println("[Writer의 설명] " + message.getTextDescription());
                 }
                 break;
 

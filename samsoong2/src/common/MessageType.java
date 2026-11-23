@@ -7,7 +7,8 @@ public enum MessageType {
     CREATE_ROOM,
     JOIN_ROOM,
     SELECT_CATEGORY,
-
+    START_GAME,
+    
     SUBMIT_TEXT,
     SUBMIT_DRAWING,
     SUBMIT_ANSWER,

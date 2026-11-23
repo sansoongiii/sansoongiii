@@ -6,8 +6,10 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import common.GamePhase;
 import common.Message;
 import common.MessageType;
+import common.PlayerRole;
 
 public class ClientMain {
 
@@ -78,6 +80,43 @@ public class ClientMain {
                 client.send(categoryRequest);
 
                 System.out.println("선택한 카테고리: " + selectedCategory);
+                
+                System.out.println("게임을 시작하려면 1, 시작하지 않으려면 0을 입력하세요.");
+                String startChoice = keyboard.readLine();
+
+                if ("1".equals(startChoice)) {
+                    Message startRequest = new Message();
+                    startRequest.setType(MessageType.START_GAME);
+                    client.send(startRequest);
+
+                    System.out.println("게임 시작 요청을 전송했습니다.");
+                } else if ("0".equals(startChoice)) {
+                    System.out.println("게임 시작을 취소했습니다.");
+                } else {
+                    System.out.println("잘못된 입력입니다.");
+                }
+            }
+            
+            while (client.isConnected()) {
+
+                Message phaseMessage = client.waitForPhaseStarted();
+
+                String role = phaseMessage.getRole();
+
+                if (GamePhase.TEXT_WRITING.name().equals(phaseMessage.getPhase())
+                        && PlayerRole.TEXT_WRITER.name().equals(role)) {
+
+                    System.out.println("제시어를 보고 설명을 입력하세요.");
+                    String description = keyboard.readLine();
+
+                    Message textRequest = new Message();
+                    textRequest.setType(MessageType.SUBMIT_TEXT);
+                    textRequest.setTextDescription(description);
+
+                    client.send(textRequest);
+
+                    System.out.println("설명을 제출했습니다.");
+                }
             }
 
         } catch (IOException e) {

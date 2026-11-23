@@ -7,9 +7,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class DBManager {
-    private static final String URL = "jdbc:mysql://127.0.0.1:3307/game";
-    private static final String USER = "Tester";
-    private static final String PASSWD = "3soong";
+    private static final String URL = "jdbc:mysql://127.0.0.1:3306/game";
+    //private static final String USER = "Tester";
+    private static final String USER = "user2";
+    //private static final String PASSWD = "3soong";
+    private static final String PASSWD = "1578";
 
     // DB 연결
     public static Connection getConnection() {

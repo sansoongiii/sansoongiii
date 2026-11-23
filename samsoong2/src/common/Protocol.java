@@ -29,6 +29,7 @@ public final class Protocol {
         switch (message.getType()) {
             case GET_CATEGORIES:
             case CREATE_ROOM:
+            case START_GAME:
             case LEAVE_ROOM:
             case DISCONNECT:
                 payload = "";
@@ -163,6 +164,7 @@ public final class Protocol {
         switch (message.getType()) {
             case GET_CATEGORIES:
             case CREATE_ROOM:
+            case START_GAME:
             case LEAVE_ROOM:
             case DISCONNECT:
                 requireCount(values, 0);

@@ -52,7 +52,7 @@ public class GameRoom {
     }
 
     public boolean canStart() {
-        return phase == GamePhase.WAITING.name()&& players.size() == REQUIRED_PLAYERS&& players.stream().allMatch(Player::isConnected);
+        return GamePhase.WAITING.name().equals(phase)&& players.size() == REQUIRED_PLAYERS&& players.stream().allMatch(Player::isConnected);
     }
 
     public String getRoomCode() {
