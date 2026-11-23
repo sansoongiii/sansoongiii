@@ -1,8 +1,10 @@
-package server;
+package server.repo;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+
+import server.db.DBManager;
 
 public class UserRepository {
 

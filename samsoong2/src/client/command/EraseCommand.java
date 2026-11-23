@@ -1,4 +1,4 @@
-package client;
+package client.command;
 
 public class EraseCommand {
 	// private CanvasPanel canvasPanel;

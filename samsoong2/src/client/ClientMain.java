@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import client.network.GameClient;
 import common.Message;
 import common.MessageType;
 

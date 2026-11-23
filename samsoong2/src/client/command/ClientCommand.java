@@ -1,5 +1,6 @@
-package client;
+package client.command;
 
+import client.controller.GameController;
 import common.Message;
 
 public interface ClientCommand {

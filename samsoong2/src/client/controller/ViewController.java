@@ -1,4 +1,4 @@
-package client;
+package client.controller;
 import common.Message;
 
 public class ViewController {

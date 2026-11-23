@@ -3,8 +3,8 @@ package server.service;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-import server.QuizDto;
-import server.QuizRepository;
+import server.db.QuizDto;
+import server.repo.QuizRepository;
 
 public class GameWordService {
     private final QuizRepository quizRepository;
