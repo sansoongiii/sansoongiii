@@ -1,5 +1,7 @@
 package client.command;
 
+import client.CanvasPanel;
+
 public class EraseCommand {
     private CanvasPanel canvasPanel;
     private int x, y;

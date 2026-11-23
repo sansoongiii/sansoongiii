@@ -2,6 +2,8 @@ package client.command;
 
 import java.awt.Color;
 
+import client.CanvasPanel;
+
 public class DrawCommand {
     private CanvasPanel canvasPanel;
     private int startX, startY, endX, endY;

@@ -9,6 +9,9 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 
+import client.command.DrawCommand;
+import client.command.EraseCommand;
+
 public class CanvasPanel extends JPanel {
 
     public static final int CANVAS_WIDTH = 600;
