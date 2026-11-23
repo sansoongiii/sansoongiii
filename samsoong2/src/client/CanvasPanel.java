@@ -20,7 +20,7 @@ public class CanvasPanel extends JPanel {
     private final BufferedImage canvasImage;
     private Point lastPoint = null;
 
-    private int brushSize = 4;
+    private final int brushSize = 4;
     private boolean eraserMode = false;
     private boolean canDraw = true;
 
@@ -134,10 +134,6 @@ public class CanvasPanel extends JPanel {
 
     public void useEraser() {
         this.eraserMode = true;
-    }
-
-    public void setBrushSize(int size) {
-        this.brushSize = size;
     }
 
     public void setCanDraw(boolean canDraw) {
