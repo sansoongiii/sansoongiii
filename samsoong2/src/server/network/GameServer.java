@@ -16,6 +16,7 @@ import java.util.List;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketException;
 
 import server.service.GameRoomService;
 import server.service.GameService;
@@ -65,8 +66,16 @@ public class GameServer implements GameMessageSender{
     	System.out.println("서버 시작: 포트 " + Protocol.PORT);
 
     	while (running) {
-	        // accept()로 접속 수락
-			Socket socket = serverSocket.accept();
+    		Socket socket;
+
+    		try {
+    		    socket = serverSocket.accept();
+    		} catch (SocketException e) {
+    		    if (!running) {
+    		        break;
+    		    }
+    		    throw e;
+    		}
 			String playerId = UUID.randomUUID().toString();
 			
 	        // ClientHandler 생성 및 연결 목록 등록
@@ -233,8 +242,27 @@ public class GameServer implements GameMessageSender{
     }
 
     public void stop() {
-        // 접속 대기 종료
-        // 모든 클라이언트 연결 종료
+        running = false;
+
+        if (serverSocket != null) {
+            try {
+                serverSocket.close();
+            } catch (IOException e) {
+                System.out.println(
+                        "서버 소켓 종료 오류: " + e.getMessage()
+                );
+            }
+        }
+
+        for (ClientHandler handler :
+                new ArrayList<>(clients.values())) {
+
+            handler.close();
+        }
+
+        gameTimerService.close();
+
+        System.out.println("서버 종료 완료");
     }
 
     @Override
