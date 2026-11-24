@@ -24,6 +24,7 @@ import server.service.GameWordService;
 import server.service.RoleAssignmentService;
 import server.service.SubmissionValidator;
 import server.model.GameRoom;
+import server.model.GameRound;
 import server.model.Player;
 
 public class GameServer implements GameMessageSender{
@@ -109,6 +110,14 @@ public class GameServer implements GameMessageSender{
             
         case SELECT_CATEGORY:
             selectCategory(playerId, message.getCategory());
+            break;
+            
+        case START_GAME:
+            startGame(playerId);
+            break;
+            
+        case SUBMIT_TEXT:
+            submitText(playerId, message.getTextDescription());
             break;
 
         default:
@@ -308,5 +317,50 @@ public class GameServer implements GameMessageSender{
         ); */
 
         sendRoomUpdated(room);
+    }
+    
+    private void startGame(String playerId) {
+        GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
+        
+        if (room == null) {
+            sendError(playerId, "NOT_IN_ROOM", "참여 중인 방이 없습니다.");
+            return;
+        }
+
+        if (!playerId.equals(room.getHostPlayerId())) {
+            sendError(playerId, "NOT_HOST", "방장만 게임을 시작할 수 있습니다.");
+            return;
+        }
+
+        try {
+        	GameRound round = gameService.startGame(room, room.getCategory());
+
+            System.out.println(
+                "게임 시작: " + room.getRoomCode()
+                    + " / 카테고리: " + room.getCategory()
+                    + " / 선택된 제시어: " + round.getAnswer()
+            );
+
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            sendError(playerId, "START_FAILED", e.getMessage());
+        }
+    }
+    
+    private void submitText(String playerId, String textDescription) {
+        GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
+
+        if (room == null) {
+            sendError(playerId, "NOT_IN_ROOM", "참여 중인 방이 없습니다.");
+            return;
+        }
+
+        try {
+            gameService.submitText(room, playerId, textDescription);
+
+            System.out.println("[설명 제출] 방 코드: " + room.getRoomCode()+" / Writer ID: " + playerId+" / 입력 내용: " + textDescription);
+
+        } catch (IllegalStateException | IllegalArgumentException | SecurityException e) {
+            sendError(playerId, "SUBMIT_FAILED", e.getMessage());
+        }
     }
 }

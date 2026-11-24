@@ -23,8 +23,10 @@ public class GameClient {
     private BufferedReader reader;
     private PrintWriter writer;
     private Thread receiveThread;
+    private volatile String currentRole;
     private final BlockingQueue<List<String>> categoryQueue = new LinkedBlockingQueue<>();
-
+    private final BlockingQueue<Message> phaseQueue = new LinkedBlockingQueue<>();
+    
     private volatile boolean connected = false;
 
     public void connect(String serverIp) throws IOException {
@@ -91,5 +93,21 @@ public class GameClient {
 
     public List<String> waitForCategories() throws InterruptedException {
         return categoryQueue.take();
+    }
+    
+    public void setCurrentRole(String role) {
+        this.currentRole = role;
+    }
+
+    public String getCurrentRole() {
+        return currentRole;
+    }
+    
+    public void receivePhaseStarted(Message message) {
+        phaseQueue.offer(message);
+    }
+
+    public Message waitForPhaseStarted() throws InterruptedException {
+        return phaseQueue.take();
     }
 }

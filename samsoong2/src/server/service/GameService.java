@@ -64,7 +64,7 @@ public class GameService {
         room.setPhase(GamePhase.TEXT_WRITING.name());
 
         startPhaseTimer(room, round, GamePhase.TEXT_WRITING.name());
-        //sendPhaseStarted(room, round, GamePhase.TEXT_WRITING.name());
+        sendPhaseStarted(room, round, GamePhase.TEXT_WRITING.name());
 
         return round;
     }
@@ -221,6 +221,7 @@ public class GameService {
         // 결과 단계에는 다음 단계 타이머가 필요하지 않음
         if (!GamePhase.ROUND_RESULT.equals(nextPhase)&& !GamePhase.FINISHED.equals(nextPhase)) {
         	startPhaseTimer(room, round, nextPhase);
+        	sendPhaseStarted(room, round, nextPhase);
         }
     }
 
@@ -287,5 +288,42 @@ public class GameService {
             .orElseThrow(() -> new IllegalStateException(
                 "설명 작성자를 찾을 수 없습니다."
             ));
+    }
+    
+    private void sendPhaseStarted(GameRoom room, GameRound round, String phase) {
+
+        for (Player player : room.getPlayers()) {
+
+            String playerId = player.getPlayerId();
+            String role = round.getAssignments().get(playerId);
+
+            Message message = new Message();
+            message.setType(MessageType.PHASE_STARTED);
+            message.setRoundNumber(round.getRoundNumber());
+            message.setPhase(phase);
+            message.setRole(role);
+
+            // 제한 시간 종료 시각
+            message.setDeadlineEpochMillis(
+                System.currentTimeMillis() + PHASE_TIME_SECONDS * 1000L
+            );
+
+            // 설명 작성자에게만 제시어 전달
+            if (PlayerRole.TEXT_WRITER.name().equals(role)) {
+                message.setAnswer(round.getAnswerFor(playerId));
+            }
+
+            // DRAWER에게 Writer의 설명 전달
+            if (PlayerRole.DRAWER.name().equals(role)) {
+                message.setTextDescription(round.getTextDescription());
+            }
+
+            // ANSWERER에게 그림 전달
+            if (PlayerRole.ANSWERER.name().equals(role)) {
+                message.setDrawingData(round.getDrawingData());
+            }
+
+            gameMessageSender.sendTo(playerId, message);
+        }
     }
 }
