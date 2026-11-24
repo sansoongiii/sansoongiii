@@ -1,7 +1,6 @@
 package server.service;
 
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 
 import server.db.QuizDto;
 import server.repo.QuizRepository;
@@ -13,7 +12,7 @@ public class GameWordService {
         this.quizRepository = quizRepository;
     }
 
-    public String getRandomWord(String category) {
+    public List<String> getWords(String category) {
         List<QuizDto> quizzes =
             quizRepository.findByCategory(category);
 
@@ -24,9 +23,10 @@ public class GameWordService {
             );
         }
 
-        int index = ThreadLocalRandom.current().nextInt(quizzes.size());
-
-        return quizzes.get(index).getKeyword();
+        return quizzes.stream()
+                .map(QuizDto::getKeyword)
+                .distinct()
+                .toList();
     }
 
     public List<String> getCategories() {

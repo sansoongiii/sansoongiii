@@ -2,7 +2,8 @@ package server.model;
 
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.HashSet;
+import java.util.Set;
 import common.GamePhase;
 
 public class GameRoom {
@@ -16,6 +17,7 @@ public class GameRoom {
     private String phase = GamePhase.WAITING.name();
 
     private String category = "";
+    private final Set<String> usedAnswers = new HashSet<>();
     
     public GameRoom(String roomCode) {
         if (roomCode == null || roomCode.isBlank()) {
@@ -88,5 +90,13 @@ public class GameRoom {
         }
 
         this.category = category;
+    }
+    
+    public synchronized boolean usedAnswer(String answer) {
+        if (answer == null || answer.isBlank()) {
+            throw new IllegalArgumentException("제시어는 필수입니다.");
+        }
+
+        return usedAnswers.add(answer);
     }
 }

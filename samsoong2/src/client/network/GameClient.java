@@ -14,20 +14,20 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public class GameClient {
-
-    private static final int SERVER_PORT = 50023;
 
     private Socket socket;
     private BufferedReader reader;
     private PrintWriter writer;
     private Thread receiveThread;
-    private volatile String currentRole;
+    //private volatile String currentRole;
     private final BlockingQueue<List<String>> categoryQueue = new LinkedBlockingQueue<>();
     private final BlockingQueue<Message> phaseQueue = new LinkedBlockingQueue<>();
     
     private volatile boolean connected = false;
+    private volatile boolean closed = false;
 
     public void connect(String serverIp) throws IOException {
     	socket = new Socket();
@@ -74,8 +74,15 @@ public class GameClient {
         return connected;
     }
 
-    public void close() {
+    public synchronized void close() {
+    	if (closed) {
+   	        return;
+        }
+
+    	closed = true;
         connected = false;
+        
+        phaseQueue.offer(new Message());
         
         try {
 			if(socket != null) {
@@ -92,9 +99,18 @@ public class GameClient {
     }
 
     public List<String> waitForCategories() throws InterruptedException {
-        return categoryQueue.take();
+    	while (!closed) {
+            List<String> categories = categoryQueue.poll(1, TimeUnit.SECONDS);
+
+            if (categories != null) {
+                return categories;
+            }
+        }
+
+        return null;
     }
     
+    /*
     public void setCurrentRole(String role) {
         this.currentRole = role;
     }
@@ -102,12 +118,29 @@ public class GameClient {
     public String getCurrentRole() {
         return currentRole;
     }
+    */
     
     public void receivePhaseStarted(Message message) {
         phaseQueue.offer(message);
     }
 
     public Message waitForPhaseStarted() throws InterruptedException {
-        return phaseQueue.take();
+    	Message message = phaseQueue.take();
+    	if (message.getType() == null) {
+            return null;
+        }
+        return message;
+    }
+    
+    public void receiveRoundResult(Message message) {
+        phaseQueue.offer(message);
+    }
+    
+    public void receiveTerminalMessage(Message message) {
+        phaseQueue.offer(message);
+    }
+    
+    public void receiveContinueStatus(Message message) {
+        phaseQueue.offer(message);
     }
 }

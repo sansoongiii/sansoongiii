@@ -1,18 +1,16 @@
 package server.network;
 
 import common.GameMessageSender;
+import common.GamePhase;
 import common.Message;
 import common.MessageType;
 import common.Protocol;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.ArrayList;
-import java.util.List;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -83,12 +81,27 @@ public class GameServer implements GameMessageSender{
 
 
     public void removeClient(String playerId) {
+        GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
+
+        if (room != null) {
+            for (Player player : room.getPlayers()) {
+                if (player.getPlayerId().equals(playerId)) {
+                    player.setConnected(false);
+                    break;
+                }
+            }
+
+            // 게임이 진행 중이라면 현재 타이머 취소
+            if (room.getCurrentRound() != null
+                    && !GamePhase.FINISHED.name().equals(room.getPhase())) {
+                gameService.abortGame(room, playerId);
+            }
+        }
+
         ClientHandler removed = clients.remove(playerId);
 
         if (removed != null) {
-            System.out.println(
-                    "연결 목록에서 제거: " + playerId
-            );
+            System.out.println("연결 목록에서 제거: " + playerId);
         }
     }
     
@@ -118,6 +131,30 @@ public class GameServer implements GameMessageSender{
             
         case SUBMIT_TEXT:
             submitText(playerId, message.getTextDescription());
+            break;
+            
+        case SUBMIT_DRAWING:
+            submitDrawing(playerId, message.getDrawingData());
+            break;
+            
+        case SUBMIT_ANSWER:
+            submitAnswer(playerId, message.getSubmittedAnswer());
+            break;
+            
+        case SAVE_TEXT_PROGRESS:
+            saveTextProgress(playerId, message.getTextDescription());
+            break;
+
+        case SAVE_DRAWING_PROGRESS:
+            saveDrawingProgress(playerId, message.getDrawingData());
+            break;
+
+        case SAVE_ANSWER_PROGRESS:
+            saveAnswerProgress(playerId, message.getSubmittedAnswer());
+            break;
+            
+        case CONTINUE_RESPONSE:
+            continueResponse(playerId, message);
             break;
 
         default:
@@ -311,10 +348,10 @@ public class GameServer implements GameMessageSender{
             return;
         }
 
-        /* room.setCategory(category);
+        room.setCategory(category);
         System.out.println(
                 "카테고리 선택 완료: " + room.getRoomCode() + " / " + category
-        ); */
+        );
 
         sendRoomUpdated(room);
     }
@@ -359,8 +396,151 @@ public class GameServer implements GameMessageSender{
 
             System.out.println("[설명 제출] 방 코드: " + room.getRoomCode()+" / Writer ID: " + playerId+" / 입력 내용: " + textDescription);
 
+        } catch (IllegalArgumentException e) {
+            sendError(playerId, "TEXT_VALIDATION_FAILED", e.getMessage());
+
+        } catch (IllegalStateException | SecurityException e) {
+            sendError(playerId, "SUBMIT_FAILED", e.getMessage());
+        }
+    }
+    
+    private void submitDrawing(String playerId, byte[] drawingData) {
+        GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
+
+        if (room == null) {
+            sendError(playerId, "NOT_IN_ROOM", "참여 중인 방이 없습니다.");
+            return;
+        }
+
+        try {
+            gameService.submitDrawing(room, playerId, drawingData);
+
+            System.out.println(
+                "[그림 제출] 방 코드: " + room.getRoomCode()
+            );
+
         } catch (IllegalStateException | IllegalArgumentException | SecurityException e) {
             sendError(playerId, "SUBMIT_FAILED", e.getMessage());
+        }
+    }
+    
+    private void submitAnswer(String playerId, String submittedAnswer) {
+        GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
+
+        if (room == null) {
+            sendError(playerId, "NOT_IN_ROOM", "참여 중인 방이 없습니다.");
+            return;
+        }
+
+        try {
+            gameService.submitAnswer(room, playerId, submittedAnswer);
+
+            System.out.println("[정답 제출] 방 코드: " + room.getRoomCode());
+
+        } catch (IllegalStateException | IllegalArgumentException | SecurityException e) {
+            sendError(playerId, "SUBMIT_FAILED", e.getMessage());
+        }
+    }
+    
+    private void saveTextProgress(String playerId, String textDescription) {
+        GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
+
+        if (room == null) {
+            return;
+        }
+
+        try {
+            gameService.saveTextProgress(room, playerId, textDescription);
+
+        } catch (IllegalStateException e) {
+            // 이미 단계가 변경된 경우 늦게 도착한 저장 요청이므로 무시
+        } catch (IllegalArgumentException | SecurityException e) {
+            sendError(playerId, "SAVE_PROGRESS_FAILED", e.getMessage());
+        }
+    }
+
+    private void saveDrawingProgress(String playerId, byte[] drawingData) {
+        GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
+
+        if (room == null) {
+            return;
+        }
+
+        try {
+            gameService.saveDrawingProgress(room, playerId, drawingData);
+
+        } catch (IllegalStateException e) {
+            // 이미 단계가 변경된 경우 늦게 도착한 저장 요청이므로 무시
+        } catch (IllegalArgumentException | SecurityException e) {
+            sendError(playerId, "SAVE_PROGRESS_FAILED", e.getMessage());
+        }
+    }
+
+    private void saveAnswerProgress(String playerId, String submittedAnswer) {
+        GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
+
+        if (room == null) {
+            return;
+        }
+
+        try {
+            gameService.saveAnswerProgress(room, playerId, submittedAnswer);
+
+        } catch (IllegalStateException e) {
+            // 이미 단계가 변경된 경우 늦게 도착한 저장 요청이므로 무시
+        } catch (IllegalArgumentException | SecurityException e) {
+            sendError(playerId, "SAVE_PROGRESS_FAILED", e.getMessage());
+        }
+    }
+    
+    private void continueResponse(String playerId, Message message) {
+
+        if (!message.isAgree()) {
+            return;
+        }
+
+        GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
+
+        if (room == null) {
+            return;
+        }
+
+        int agreedCount;
+
+        try {
+            agreedCount = gameService.markPlayerReady(room, playerId);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            sendError(playerId, "CONTINUE_FAILED", e.getMessage());
+            return;
+        }
+
+        int playerCount = room.getPlayers().size();
+        
+        Message statusMessage = new Message();
+        statusMessage.setType(MessageType.CONTINUE_STATUS);
+        statusMessage.setAgreedCount(agreedCount);
+        statusMessage.setPlayerCount(playerCount);
+        statusMessage.setNotice("***다음 라운드 진행 가능 확인 중***");
+
+        List<String> playerIds = new ArrayList<>();
+
+        for (Player player : room.getPlayers()) {
+            playerIds.add(player.getPlayerId());
+        }
+
+        sendToPlayers(playerIds, statusMessage);
+
+        if (agreedCount == playerCount) {
+
+            GameRound nextRound = gameService.startNextRound(room);
+
+            if (nextRound == null) {
+                Message finishedMessage = new Message();
+                finishedMessage.setType(MessageType.GAME_FINISHED);
+                finishedMessage.setNotice("***모든 라운드가 종료되었습니다.***");
+
+                sendToPlayers(playerIds, finishedMessage);
+            }
         }
     }
 }

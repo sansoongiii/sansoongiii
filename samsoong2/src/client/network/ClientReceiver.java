@@ -71,7 +71,6 @@ public class ClientReceiver implements Runnable {
                 break;
 
             case PHASE_STARTED:
-            	client.setCurrentRole(message.getRole());
             	client.receivePhaseStarted(message);
             	
                 System.out.printf(
@@ -91,15 +90,12 @@ public class ClientReceiver implements Runnable {
                 break;
 
             case ROUND_RESULT:
-                System.out.printf(
-                        "[결과] 제시어 %s / 답안 %s / 정답 여부 %s%n",
-                        message.getAnswer(),
-                        message.getSubmittedAnswer(),
-                        message.isCorrect()
-                );
+            	client.receiveRoundResult(message);
                 break;
 
             case CONTINUE_STATUS:
+            	client.receiveContinueStatus(message);
+            	
                 System.out.printf(
                         "[계속 진행] %d/%d%n",
                         message.getAgreedCount(),
@@ -112,23 +108,29 @@ public class ClientReceiver implements Runnable {
                         "[오류 " + message.getErrorCode() + "] "
                                 + message.getNotice()
                 );
+                client.receiveTerminalMessage(message);
                 break;
 
             case GAME_FINISHED:
             case ROOM_LEFT:
             case GAME_ABORTED:
+            	System.out.println(
+                        "[안내] " + message.getNotice()
+                );
+            	client.receiveTerminalMessage(message);
+            	break;
+                
             case TEST_MESSAGE:
                 System.out.println(
                         "[안내] " + message.getNotice()
                 );
                 break;
-
+                
             default:
                 System.out.println(
                         "서버 알림으로 처리하지 않는 종류입니다."
                 );
                 break;
-                
            }
      }
 }
