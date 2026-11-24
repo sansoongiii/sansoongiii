@@ -1,6 +1,7 @@
 package client.network;
 
 import common.Message;
+import common.MessageType;
 import common.Protocol;
 
 import java.io.BufferedReader;
@@ -109,5 +110,54 @@ public class GameClient {
 
     public Message waitForPhaseStarted() throws InterruptedException {
         return phaseQueue.take();
+    }
+    
+ // 제출 버튼을 눌렀을 때 호출
+    public void submitDrawing(
+            int roundNumber,
+            byte[] drawingData) throws IOException {
+
+        sendDrawing(
+                MessageType.SUBMIT_DRAWING,
+                roundNumber,
+                drawingData
+        );
+    }
+
+    // 작성 중인 그림을 저장할 때 호출
+    public void saveDrawingProgress(
+            int roundNumber,
+            byte[] drawingData) throws IOException {
+
+        sendDrawing(
+                MessageType.SAVE_DRAWING_PROGRESS,
+                roundNumber,
+                drawingData
+        );
+    }
+
+    private void sendDrawing(
+            MessageType type,
+            int roundNumber,
+            byte[] drawingData) throws IOException {
+
+        if (roundNumber < 1) {
+            throw new IllegalArgumentException(
+                    "라운드 번호는 1 이상이어야 합니다."
+            );
+        }
+
+        if (drawingData == null || drawingData.length == 0) {
+            throw new IllegalArgumentException(
+                    "전송할 그림 데이터가 없습니다."
+            );
+        }
+
+        Message request = new Message();
+        request.setType(type);
+        request.setRoundNumber(roundNumber);
+        request.setDrawingData(drawingData);
+
+        send(request);
     }
 }
