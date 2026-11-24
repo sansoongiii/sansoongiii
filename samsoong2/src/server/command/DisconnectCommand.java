@@ -10,6 +10,7 @@ public class DisconnectCommand implements ServerCommand {
             ClientHandler clientHandler,
             Message message) {
 
+    	System.out.println("[종료 요청 처리] " + clientHandler.getPlayerId());
         clientHandler.close();
     }
 }
