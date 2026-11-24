@@ -1,9 +1,9 @@
-package client;
+package client.controller;
 
 import java.io.IOException;
 import java.util.Objects;
 
-import client.GameClient;
+import client.network.GameClient;
 import common.Message;
 import common.MessageType;
 

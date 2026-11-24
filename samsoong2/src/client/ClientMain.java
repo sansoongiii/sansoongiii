@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import common.GamePhase;
+import client.network.GameClient;
 import common.Message;
 import common.MessageType;
 import common.PlayerRole;
@@ -16,9 +17,7 @@ public class ClientMain {
     public static void main(String[] args) {
 
     	GameClient client = new GameClient();
-    	
-    	BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
-    	
+    	    	
     	try {
             client.connect("127.0.0.1");
             client.startReceiving();

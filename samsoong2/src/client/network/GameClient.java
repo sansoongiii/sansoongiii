@@ -1,4 +1,4 @@
-package client;
+package client.network;
 
 import common.Message;
 import common.Protocol;

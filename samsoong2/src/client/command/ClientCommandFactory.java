@@ -1,4 +1,4 @@
-package client;
+package client.command;
 
 import java.util.EnumMap;
 import java.util.Map;
