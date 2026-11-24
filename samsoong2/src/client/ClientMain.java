@@ -103,6 +103,8 @@ public class ClientMain {
                 Message phaseMessage = client.waitForPhaseStarted();
 
                 String role = phaseMessage.getRole();
+                
+                System.out.println("[입력 처리] 단계=" + phaseMessage.getPhase() + " / 역할=" + role);
 
                 if (GamePhase.TEXT_WRITING.name().equals(phaseMessage.getPhase())
                         && PlayerRole.TEXT_WRITER.name().equals(role)) {
@@ -112,11 +114,36 @@ public class ClientMain {
 
                     Message textRequest = new Message();
                     textRequest.setType(MessageType.SUBMIT_TEXT);
+                    textRequest.setRoundNumber(phaseMessage.getRoundNumber());
                     textRequest.setTextDescription(description);
 
                     client.send(textRequest);
 
                     System.out.println("설명을 제출했습니다.");
+                } else if (GamePhase.ANSWERING.name()
+                        .equals(phaseMessage.getPhase())
+                        && PlayerRole.ANSWERER.name().equals(role)) {
+
+                    System.out.println("그림을 보고 정답을 입력하세요.");
+
+                    String answer = keyboard.readLine();
+
+                    if (answer == null) {
+                        client.close();
+                        break;
+                    }
+
+                    if (answer.isBlank()) {
+                        System.out.println("빈 정답은 전송하지 않습니다.");
+                        continue;
+                    }
+
+                    client.submitAnswer(
+                            phaseMessage.getRoundNumber(),
+                            answer
+                    );
+
+                    System.out.println("정답 제출 요청을 전송했습니다.");
                 }
             }
 

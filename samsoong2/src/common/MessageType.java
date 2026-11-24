@@ -11,6 +11,7 @@ public enum MessageType {
     
     SUBMIT_TEXT,
     SUBMIT_DRAWING,
+    SAVE_DRAWING_PROGRESS,
     SUBMIT_ANSWER,
 
     CONTINUE_RESPONSE,
