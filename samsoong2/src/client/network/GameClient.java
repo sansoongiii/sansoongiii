@@ -160,4 +160,28 @@ public class GameClient {
 
         send(request);
     }
+    
+    public void submitAnswer(
+            int roundNumber,
+            String submittedAnswer) throws IOException {
+
+        if (roundNumber < 1) {
+            throw new IllegalArgumentException(
+                    "라운드 번호는 1 이상이어야 합니다."
+            );
+        }
+
+        if (submittedAnswer == null || submittedAnswer.isBlank()) {
+            throw new IllegalArgumentException(
+                    "정답을 입력해야 합니다."
+            );
+        }
+
+        Message request = new Message();
+        request.setType(MessageType.SUBMIT_ANSWER);
+        request.setRoundNumber(roundNumber);
+        request.setSubmittedAnswer(submittedAnswer);
+
+        send(request);
+    }
 }

@@ -127,6 +127,10 @@ public class GameServer implements GameMessageSender{
         case SAVE_DRAWING_PROGRESS:
             receiveDrawing(playerId, message, false);
             break;
+       
+        case SUBMIT_ANSWER:
+            submitAnswer(playerId, message);
+            break;
 
         default:
             sendError(
@@ -449,6 +453,62 @@ public class GameServer implements GameMessageSender{
 
         } catch (IllegalArgumentException e) {
             sendError(playerId, "INVALID_DRAWING", e.getMessage());
+        }
+    }
+    
+    private void submitAnswer(String playerId, Message message) {
+        GameRoom room =
+                gameRoomService.findRoomByPlayerId(playerId);
+
+        if (room == null) {
+            sendError(
+                    playerId,
+                    "NOT_IN_ROOM",
+                    "참여 중인 방이 없습니다."
+            );
+            return;
+        }
+
+        GameRound round = room.getCurrentRound();
+
+        if (round == null) {
+            sendError(
+                    playerId,
+                    "INVALID_PHASE",
+                    "진행 중인 라운드가 없습니다."
+            );
+            return;
+        }
+
+        if (message.getRoundNumber() != round.getRoundNumber()) {
+            sendError(
+                    playerId,
+                    "INVALID_ROUND",
+                    "현재 라운드와 다른 요청입니다."
+            );
+            return;
+        }
+
+        try {
+            gameService.submitAnswer(
+                    room,
+                    playerId,
+                    message.getSubmittedAnswer()
+            );
+
+            System.out.println(
+                    "[정답 제출] 방: " + room.getRoomCode()
+                            + " / 참가자: " + playerId
+            );
+
+        } catch (SecurityException e) {
+            sendError(playerId, "INVALID_ROLE", e.getMessage());
+
+        } catch (IllegalStateException e) {
+            sendError(playerId, "INVALID_PHASE", e.getMessage());
+
+        } catch (IllegalArgumentException e) {
+            sendError(playerId, "INVALID_MESSAGE", e.getMessage());
         }
     }
 }
