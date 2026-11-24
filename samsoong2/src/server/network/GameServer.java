@@ -119,6 +119,14 @@ public class GameServer implements GameMessageSender{
         case SUBMIT_TEXT:
             submitText(playerId, message.getRoundNumber(), message.getTextDescription());
             break;
+            
+        case SUBMIT_DRAWING:
+            receiveDrawing(playerId, message, true);
+            break;
+
+        case SAVE_DRAWING_PROGRESS:
+            receiveDrawing(playerId, message, false);
+            break;
 
         default:
             sendError(
@@ -348,6 +356,12 @@ public class GameServer implements GameMessageSender{
     
     private void submitText(String playerId, int roundNumber, String textDescription) {
         GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
+        
+        if (room == null) {
+            sendError(playerId, "NOT_IN_ROOM", "참여 중인 방이 없습니다.");
+            return;
+        }
+        
         GameRound round = room.getCurrentRound();
         
         if (round == null) {
@@ -360,11 +374,6 @@ public class GameServer implements GameMessageSender{
             return;
         }
 
-        if (room == null) {
-            sendError(playerId, "NOT_IN_ROOM", "참여 중인 방이 없습니다.");
-            return;
-        }
-
         try {
             gameService.submitText(room, playerId, textDescription);
 
@@ -372,6 +381,74 @@ public class GameServer implements GameMessageSender{
 
         } catch (IllegalStateException | IllegalArgumentException | SecurityException e) {
             sendError(playerId, "SUBMIT_FAILED", e.getMessage());
+        }
+    }
+    
+    private void receiveDrawing(
+            String playerId,
+            Message message,
+            boolean finalSubmission) {
+
+        GameRoom room =
+                gameRoomService.findRoomByPlayerId(playerId);
+
+        if (room == null) {
+            sendError(
+                    playerId,
+                    "NOT_IN_ROOM",
+                    "참여 중인 방이 없습니다."
+            );
+            return;
+        }
+
+        GameRound round = room.getCurrentRound();
+
+        if (round == null) {
+            sendError(
+                    playerId,
+                    "INVALID_PHASE",
+                    "진행 중인 라운드가 없습니다."
+            );
+            return;
+        }
+
+        if (message.getRoundNumber() != round.getRoundNumber()) {
+            sendError(
+                    playerId,
+                    "INVALID_ROUND",
+                    "현재 라운드와 다른 요청입니다."
+            );
+            return;
+        }
+
+        try {
+            if (finalSubmission) {
+                gameService.submitDrawing(
+                        room,
+                        playerId,
+                        message.getDrawingData()
+                );
+
+                System.out.println(
+                        "[그림 제출] 방: " + room.getRoomCode()
+                                + " / 참가자: " + playerId
+                );
+            } else {
+                gameService.saveDrawingProgress(
+                        room,
+                        playerId,
+                        message.getDrawingData()
+                );
+            }
+
+        } catch (SecurityException e) {
+            sendError(playerId, "INVALID_ROLE", e.getMessage());
+
+        } catch (IllegalStateException e) {
+            sendError(playerId, "INVALID_PHASE", e.getMessage());
+
+        } catch (IllegalArgumentException e) {
+            sendError(playerId, "INVALID_DRAWING", e.getMessage());
         }
     }
 }
