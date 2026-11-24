@@ -117,7 +117,7 @@ public class GameServer implements GameMessageSender{
             break;
             
         case SUBMIT_TEXT:
-            submitText(playerId, message.getTextDescription());
+            submitText(playerId, message.getRoundNumber(), message.getTextDescription());
             break;
 
         default:
@@ -346,8 +346,19 @@ public class GameServer implements GameMessageSender{
         }
     }
     
-    private void submitText(String playerId, String textDescription) {
+    private void submitText(String playerId, int roundNumber, String textDescription) {
         GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
+        GameRound round = room.getCurrentRound();
+        
+        if (round == null) {
+            sendError(playerId, "INVALID_PHASE", "진행 중인 라운드가 없습니다.");
+            return;
+        }
+
+        if (roundNumber != round.getRoundNumber()) {
+            sendError(playerId, "INVALID_ROUND", "현재 라운드와 다른 요청입니다.");
+            return;
+        }
 
         if (room == null) {
             sendError(playerId, "NOT_IN_ROOM", "참여 중인 방이 없습니다.");

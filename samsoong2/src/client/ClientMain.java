@@ -112,6 +112,7 @@ public class ClientMain {
 
                     Message textRequest = new Message();
                     textRequest.setType(MessageType.SUBMIT_TEXT);
+                    textRequest.setRoundNumber(phaseMessage.getRoundNumber());
                     textRequest.setTextDescription(description);
 
                     client.send(textRequest);
