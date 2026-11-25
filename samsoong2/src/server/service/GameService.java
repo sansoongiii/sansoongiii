@@ -431,13 +431,15 @@ public class GameService {
             );
 
             // 설명 작성자에게만 제시어 전달
-            if (PlayerRole.TEXT_WRITER.name().equals(role)) {
+            if (GamePhase.TEXT_WRITING.name().equals(phase)
+                    && PlayerRole.TEXT_WRITER.name().equals(role)) {
                 message.setAnswer(round.getAnswerFor(playerId));
             }
 
             // DRAWER에게 Writer의 설명 전달
-            if (GamePhase.DRAWING.name().equals(phase)
-                    && PlayerRole.DRAWER.name().equals(role)) {
+            if (GamePhase.ANSWERING.name().equals(phase)
+                    && PlayerRole.ANSWERER.name().equals(role)) {
+
                 message.setTextDescription(round.getTextDescription());
             }
 

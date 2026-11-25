@@ -11,6 +11,8 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicBoolean;
+import server.command.ServerCommandFactory;
 
 public class ClientHandler implements Runnable {
 
@@ -22,6 +24,8 @@ public class ClientHandler implements Runnable {
     private PrintWriter writer;
 
     private volatile boolean connected = false;
+    private final ServerCommandFactory commandFactory = new ServerCommandFactory();
+    private final AtomicBoolean closed = new AtomicBoolean(false);
 
     public ClientHandler(
             String playerId, Socket socket, GameServer server) {
@@ -46,11 +50,16 @@ public class ClientHandler implements Runnable {
     		
     		String line;
     		
-    		while ((line = reader.readLine()) != null) {
+    		while (connected && (line = reader.readLine()) != null) {
 				try {
 					Message message = Protocol.parse(line);
 					
-					// 로그·응답 처리를 GameServer에 위임
+
+					if (message.getType() == MessageType.DISCONNECT) {
+						commandFactory.create(message.getType()).execute(this, message);
+						break;
+					}
+
 	                server.handleMessage(playerId, message);
 	                
 				} catch (IllegalArgumentException e) {
@@ -58,7 +67,9 @@ public class ClientHandler implements Runnable {
 				}
 			}
     	} catch (IOException e) {
-    		System.out.println("수신 오류: " + e.getMessage());
+    		if(!closed.get()) {
+    			System.out.println("수신 오류: " + e.getMessage());
+    		}
     	} finally {
     	    close();
     	}
@@ -87,13 +98,15 @@ public class ClientHandler implements Runnable {
         return playerId;
     }
 
-    public synchronized void close() {
+    public void close() {
+        if (!closed.compareAndSet(false, true)) {
+            return;
+        }
+
         connected = false;
 
         try {
-            if (!socket.isClosed()) {
-                socket.close();
-            }
+            socket.close();
         } catch (IOException e) {
             System.out.println(
                     "연결 종료 오류: " + e.getMessage()

@@ -3,134 +3,109 @@ package client.network;
 import java.io.BufferedReader;
 import java.io.IOException;
 
+import javax.swing.SwingUtilities;
+
+
+import client.command.ClientCommand;
+import client.command.ClientCommandFactory;
+import client.controller.GameController;
+
 import common.Message;
-import common.PlayerRole;
 import common.Protocol;
 
 public class ClientReceiver implements Runnable {
 
     private final BufferedReader reader;
     private final GameClient client;
+    private final GameController controller;
+    private final ClientCommandFactory commandFactory = new ClientCommandFactory();
 
-    public ClientReceiver(BufferedReader reader, GameClient client) {
+    public ClientReceiver(BufferedReader reader, GameClient client,GameController controller) {
         this.reader = reader;
         this.client = client;
+        this.controller = controller;
     }
 
     @Override
     public void run() {
        try {
     	   String line; 
+    	   
     	   while((line = reader.readLine()) != null) {
+    		   Message message;
+    		   
     		   try {
-    			   Message message = Protocol.parse(line);
-                   printMessage(message);
-
+    			   message = Protocol.parse(line);
     		   } catch (IllegalArgumentException e) {
     			   System.out.println("메시지 형식 오류: " + e.getMessage());
+    			   continue;
     		   }
+    		   receive(message);
     	   }
-    	   if (client.isConnected()) {
-			System.out.println("서버 연결이 종료되었습니다.");
-		}
        } catch (IOException e) {
     	   if (client.isConnected()) {
 			System.out.println("수신 오류: " + e.getMessage());
 		}
        } finally {
     	   client.close();
+    	   
+    	   SwingUtilities.invokeLater(() -> controller.onDisconnected());
        }
     }
     
-    private void printMessage(Message message) {
-        System.out.println(
-                "[서버 메시지] " + message.getType()
-        );
+    private void receive(Message message) {
+    	ClientCommand command;
+    	try {
+            command = commandFactory.create(message.getType());
+        } catch (IllegalArgumentException e) {
+            System.out.println(
+                    "알림 처리 오류: " + e.getMessage()
+            );
+            return;
+        }
 
+        // 화면·컨트롤러 처리는 Swing 이벤트 스레드에서 실행
+        SwingUtilities.invokeLater(() -> {
+            try {
+                command.execute(controller, message);
+            } catch (RuntimeException e) {
+                System.out.println(
+                        "컨트롤러 처리 오류: " + e.getMessage()
+                );
+                e.printStackTrace();
+            }
+        });
+
+        // 기존 ClientMain의 콘솔 테스트용 전달은 유지
         switch (message.getType()) {
-            case CONNECTED:
-                System.out.println(
-                        "[내 ID] " + message.getPlayerId()
-                );
-                break;
-
             case CATEGORY_LIST:
-            	client.receiveCategories(message.getCategories());
-                System.out.println(
-                        "[카테고리] " + message.getCategories()
-                );
-                break;
-
-            case ROOM_UPDATED:
-                System.out.printf(
-                        "[방] %s / 인원 %d / 카테고리 %s%n",
-                        message.getRoomCode(),
-                        message.getPlayerCount(),
-                        message.getCategory()
-                );
+                client.receiveCategories(message.getCategories());
                 break;
 
             case PHASE_STARTED:
-            	client.receivePhaseStarted(message);
-            	
-                System.out.printf(
-                        "[라운드 %d] 단계 %s / 역할 %s%n",
-                        message.getRoundNumber(),
-                        message.getPhase(),
-                        message.getRole()
-                );
-
-                if (message.getAnswer() != null && !message.getAnswer().isEmpty()) {
-                    System.out.println("[제시어] " + message.getAnswer());
-                }
-                
-                if (PlayerRole.DRAWER.name().equals(message.getRole()) && message.getTextDescription() != null && !message.getTextDescription().isEmpty()) {
-                    System.out.println("[Writer의 설명] " + message.getTextDescription());
-                }
+                client.setCurrentRole(message.getRole());
+                client.receivePhaseStarted(message);
                 break;
-
+                
             case ROUND_RESULT:
-            	client.receiveRoundResult(message);
+                client.receiveRoundResult(message);
                 break;
 
             case CONTINUE_STATUS:
-            	client.receiveContinueStatus(message);
-            	
-                System.out.printf(
-                        "[계속 진행] %d/%d%n",
-                        message.getAgreedCount(),
-                        message.getPlayerCount()
-                );
+                client.receiveContinueStatus(message);
                 break;
 
             case ERROR:
-                System.out.println(
-                        "[오류 " + message.getErrorCode() + "] "
-                                + message.getNotice()
-                );
-                client.receiveTerminalMessage(message);
-                break;
-
             case GAME_FINISHED:
             case ROOM_LEFT:
             case GAME_ABORTED:
-            	System.out.println(
-                        "[안내] " + message.getNotice()
-                );
-            	client.receiveTerminalMessage(message);
-            	break;
-                
-            case TEST_MESSAGE:
-                System.out.println(
-                        "[안내] " + message.getNotice()
-                );
+                client.receiveTerminalMessage(message);
                 break;
                 
             default:
-                System.out.println(
-                        "서버 알림으로 처리하지 않는 종류입니다."
-                );
                 break;
-           }
+          
+        }
+
      }
 }

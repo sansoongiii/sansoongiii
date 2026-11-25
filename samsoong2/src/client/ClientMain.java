@@ -109,7 +109,6 @@ public class ClientMain {
             }
             // GUI 기반 게임 진행 시작
             startGameGui(client);
-
         } catch (IOException e) {
             System.out.println(
                     "연결 또는 입출력 오류: " + e.getMessage()

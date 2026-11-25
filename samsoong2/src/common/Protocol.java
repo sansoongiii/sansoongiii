@@ -46,7 +46,8 @@ public final class Protocol {
             case SUBMIT_TEXT:
                 payload = buildData(message.getTextDescription());
                 break;
-
+            
+            case SAVE_DRAWING_PROGRESS:
             case SUBMIT_DRAWING:
                 payload = buildData(
                         encodeImage(message.getDrawingData())
@@ -196,7 +197,8 @@ public final class Protocol {
                 requireCount(values, 1);
                 message.setTextDescription(values[0]);
                 break;
-
+            
+            case SAVE_DRAWING_PROGRESS: 
             case SUBMIT_DRAWING:
                 requireCount(values, 1);
                 message.setDrawingData(decodeImage(values[0]));
