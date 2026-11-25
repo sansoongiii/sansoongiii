@@ -15,36 +15,50 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class GameClient {
-
-    private static final int SERVER_PORT = 50023;
 
     private Socket socket;
     private BufferedReader reader;
     private PrintWriter writer;
     private Thread receiveThread;
+    
+    private volatile boolean connected;
     private volatile String currentRole;
+    
+    private final GameController controller;
+    private final AtomicBoolean closed = new AtomicBoolean(false);
+    
     private final BlockingQueue<List<String>> categoryQueue = new LinkedBlockingQueue<>();
     private final BlockingQueue<Message> phaseQueue = new LinkedBlockingQueue<>();
     
-    private volatile boolean connected = false;
-    
-    private final GameController controller;
-
     public GameClient() {
         this(new GameController());
     }
 
     public GameClient(GameController controller) {
-        this.controller = java.util.Objects.requireNonNull(controller);
+        this.controller = Objects.requireNonNull(controller);
     }
     
     public void connect(String serverIp) throws IOException {
-    	socket = new Socket();
+    	
+    	if (closed.get()) {
+            throw new IOException(
+                    "종료한 클라이언트입니다. 새 객체로 연결하세요."
+            );
+        }
+    	
+        if (socket != null) {
+            throw new IOException("이미 연결을 시도한 클라이언트입니다.");
+        }
+
+        socket = new Socket();
+
     	try {
             socket.connect(new InetSocketAddress(serverIp,Protocol.PORT), 5000);
 
@@ -88,9 +102,13 @@ public class GameClient {
         return connected;
     }
 
-    public void close() {
-        connected = false;
-        
+    public synchronized void close() {
+    	if (!closed.compareAndSet(false, true)) {
+   	        return;
+        }
+
+    	connected = false;
+                
         try {
 			if(socket != null) {
 				socket.close();
@@ -101,26 +119,39 @@ public class GameClient {
 		}
     }
     
+    public void disconnect() {
+        try {
+            if (connected) {
+                Message request = new Message();
+                request.setType(MessageType.DISCONNECT);
+                send(request);
+            }
+        } catch (IOException e) {
+            System.out.println(
+                    "종료 요청 전송 실패: " + e.getMessage()
+            );
+        } finally {
+            close();
+        }
+    }
+    
     public void receiveCategories(List<String> categories) {
         categoryQueue.offer(List.copyOf(categories));
     }
-
+    
     public List<String> waitForCategories() throws InterruptedException, IOException {
     	while (connected) {
-            List<String> categories =
-                    categoryQueue.poll(200, TimeUnit.MILLISECONDS);
+            List<String> categories = categoryQueue.poll(200, TimeUnit.MILLISECONDS);
 
             if (categories != null) {
                 return categories;
             }
         }
-
-        throw new IOException("서버 연결이 종료되었습니다.");
+        throw new IOException("서버 연결이 종료되었습니다."); 
     }
-    
-    
+
     public void setCurrentRole(String role) {
-        this.currentRole = role;
+      currentRole = role;
     }
 
     public String getCurrentRole() {
@@ -130,18 +161,29 @@ public class GameClient {
     public void receivePhaseStarted(Message message) {
         phaseQueue.offer(message);
     }
+    
+    public void receiveRoundResult(Message message) {
+        phaseQueue.offer(message);
+    }
+    
+    public void receiveTerminalMessage(Message message) {
+        phaseQueue.offer(message);
+    }
+    
+    public void receiveContinueStatus(Message message) {
+        phaseQueue.offer(message);
+    }
 
-    public Message waitForPhaseStarted() throws InterruptedException, IOException {
-    	 while (connected) {
-    	        Message message =
-    	                phaseQueue.poll(200, TimeUnit.MILLISECONDS);
+    public Message waitForPhaseStarted() throws InterruptedException {
+    	 while (connected || !phaseQueue.isEmpty()) {
+    	        Message message = phaseQueue.poll(200, TimeUnit.MILLISECONDS);
 
     	        if (message != null) {
     	            return message;
     	        }
     	    }
-
-    	    throw new IOException("서버 연결이 종료되었습니다.");
+    	 
+    	 	return null;
     }
     
  // 제출 버튼을 눌렀을 때 호출
@@ -156,7 +198,7 @@ public class GameClient {
         );
     }
 
-    // 작성 중인 그림을 저장할 때 호출
+// 작성 중인 그림을 저장할 때 호출
     public void saveDrawingProgress(
             int roundNumber,
             byte[] drawingData) throws IOException {
@@ -217,20 +259,4 @@ public class GameClient {
         send(request);
     }
     
-    public void disconnect() {
-        try {
-            if (connected) {
-                Message request = new Message();
-                request.setType(MessageType.DISCONNECT);
-                send(request);
-            }
-        } catch (IOException e) {
-            System.out.println(
-                    "종료 요청 전송 실패: " + e.getMessage()
-            );
-        } finally {
-            close();
-        }
-        
-    }
 }

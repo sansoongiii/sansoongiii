@@ -1,4 +1,4 @@
-package client;
+package client.ui;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -6,6 +6,8 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.function.Consumer;
+
 import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 
@@ -24,6 +26,8 @@ public class CanvasPanel extends JPanel {
     private boolean eraserMode = false;
     private boolean canDraw = true;
 
+    private Consumer<byte[]> progressListener;
+    
     public CanvasPanel() {
         setPreferredSize(new Dimension(CANVAS_WIDTH, CANVAS_HEIGHT));
         setBackground(Color.WHITE);
@@ -52,6 +56,7 @@ public class CanvasPanel extends JPanel {
             @Override
             public void mouseReleased(MouseEvent e) {
                 lastPoint = null;
+                saveProgress();
             }
         };
 
@@ -143,5 +148,22 @@ public class CanvasPanel extends JPanel {
     
     public void requestClearAll() {
         new EraseCommand(this, true).execute();
+        saveProgress();
+    }
+    
+    private void saveProgress() {
+        if (progressListener == null || !canDraw) {
+            return;
+        }
+
+        try {
+            progressListener.accept(exportPng());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public void setProgressListener(Consumer<byte[]> listener) {
+        this.progressListener = listener;
     }
 }

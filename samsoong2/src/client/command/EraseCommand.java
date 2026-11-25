@@ -1,6 +1,6 @@
 package client.command;
 
-import client.CanvasPanel;
+import client.ui.CanvasPanel;
 
 public class EraseCommand {
     private CanvasPanel canvasPanel;

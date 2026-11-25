@@ -21,6 +21,8 @@ public class GameRound {
     private boolean drawingSubmitted = false;
     private boolean answerSubmitted = false;
     
+    private final java.util.Set<String> readyPlayers = new java.util.HashSet<>();
+    
     public GameRound(int roundNumber,String category,String answer,Map<String, String> assignments) {
         if (roundNumber < 1) {
             throw new IllegalArgumentException("라운드 번호는 1 이상이어야 합니다.");
@@ -138,14 +140,40 @@ public class GameRound {
     }
     // 설명 작성 중인 내용 저장
     public void updateTextDescription(String textDescription) {
+    	if (textSubmitted) {
+            return;
+        }
         this.textDescription = textDescription;
     }
     // 그림 작성 중인 내용 저장
     public void updateDrawingData(byte[] drawingData) {
+    	if (drawingSubmitted) {
+            return;
+        }
         this.drawingData = drawingData == null? null: drawingData.clone();
     }
     // 정답 작성 중인 내용 저장
     public void updateSubmittedAnswer(String submittedAnswer) {
+    	if (answerSubmitted) {
+            return;
+        }
         this.submittedAnswer = submittedAnswer;
+    }
+    
+    // 라운드 결과 확인 완료 등록
+    public synchronized void markPlayerReady(String playerId) {
+        if (playerId == null || !assignments.containsKey(playerId)) {
+            throw new IllegalArgumentException("유효하지 않은 플레이어입니다.");
+        }
+        readyPlayers.add(playerId);
+    }
+
+    // 모든 플레이어가 확인했는지 검사
+    public synchronized boolean areAllPlayersReady() {
+        return readyPlayers.size() == assignments.size();
+    }
+    
+    public synchronized int getReadyCount() {
+        return readyPlayers.size();
     }
 }

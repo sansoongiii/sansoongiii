@@ -47,7 +47,6 @@ public final class Protocol {
                 payload = buildData(message.getTextDescription());
                 break;
             
-            case SAVE_DRAWING_PROGRESS:
             case SUBMIT_DRAWING:
                 payload = buildData(
                         encodeImage(message.getDrawingData())
@@ -57,7 +56,19 @@ public final class Protocol {
             case SUBMIT_ANSWER:
                 payload = buildData(message.getSubmittedAnswer());
                 break;
+                
+            case SAVE_TEXT_PROGRESS:
+                payload = buildData(message.getTextDescription());
+                break;
 
+            case SAVE_DRAWING_PROGRESS:
+                payload = buildData(encodeImage(message.getDrawingData()));
+                break;
+                
+            case SAVE_ANSWER_PROGRESS:
+                payload = buildData(message.getSubmittedAnswer());
+                break;
+                
             case CONTINUE_RESPONSE:
                 payload = buildData(
                         Boolean.toString(message.isAgree())
@@ -185,8 +196,7 @@ public final class Protocol {
                 requireCount(values, 1);
                 message.setTextDescription(values[0]);
                 break;
-            
-            case SAVE_DRAWING_PROGRESS: 
+         
             case SUBMIT_DRAWING:
                 requireCount(values, 1);
                 message.setDrawingData(decodeImage(values[0]));
@@ -197,6 +207,21 @@ public final class Protocol {
                 message.setSubmittedAnswer(values[0]);
                 break;
 
+            case SAVE_TEXT_PROGRESS:
+                requireCount(values, 1);
+                message.setTextDescription(values[0]);
+                break;
+
+            case SAVE_DRAWING_PROGRESS:
+                requireCount(values, 1);
+                message.setDrawingData(decodeImage(values[0]));
+                break;
+                
+            case SAVE_ANSWER_PROGRESS:
+                requireCount(values, 1);
+                message.setSubmittedAnswer(values[0]);
+                break;
+                
             case CONTINUE_RESPONSE:
                 requireCount(values, 1);
                 message.setAgree(parseBoolean(values[0]));

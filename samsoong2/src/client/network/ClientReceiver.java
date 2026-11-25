@@ -30,8 +30,10 @@ public class ClientReceiver implements Runnable {
     public void run() {
        try {
     	   String line; 
+    	   
     	   while((line = reader.readLine()) != null) {
     		   Message message;
+    		   
     		   try {
     			   message = Protocol.parse(line);
     		   } catch (IllegalArgumentException e) {
@@ -46,6 +48,7 @@ public class ClientReceiver implements Runnable {
 		}
        } finally {
     	   client.close();
+    	   
     	   SwingUtilities.invokeLater(() -> controller.onDisconnected());
        }
     }
@@ -83,9 +86,26 @@ public class ClientReceiver implements Runnable {
                 client.setCurrentRole(message.getRole());
                 client.receivePhaseStarted(message);
                 break;
+                
+            case ROUND_RESULT:
+                client.receiveRoundResult(message);
+                break;
 
+            case CONTINUE_STATUS:
+                client.receiveContinueStatus(message);
+                break;
+
+            case ERROR:
+            case GAME_FINISHED:
+            case ROOM_LEFT:
+            case GAME_ABORTED:
+                client.receiveTerminalMessage(message);
+                break;
+                
             default:
                 break;
+          
         }
+
      }
 }

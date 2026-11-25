@@ -2,7 +2,7 @@ package client.command;
 
 import java.awt.Color;
 
-import client.CanvasPanel;
+import client.ui.CanvasPanel;
 
 public class DrawCommand {
     private CanvasPanel canvasPanel;

@@ -1,5 +1,7 @@
 package server.service;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,7 +43,7 @@ public class GameService {
         return gameWordService.getCategories();
     }
     
-    public GameRound startGame(GameRoom room,String category) {
+    public synchronized GameRound startGame(GameRoom room,String category) {
         if (!room.canStart()) {
             throw new IllegalStateException("플레이어 3명이 모두 입장해야 게임을 시작할 수 있습니다.");
         }
@@ -54,7 +56,24 @@ public class GameService {
     private GameRound createRound(GameRoom room,int roundNumber,String category) {
         Map<String, String> assignments =roleAssignmentService.assignRoles(room);
         //var assignments = roleAssignmentService.assignRoles(room);
-        String answer = gameWordService.getRandomWord(category);
+        List<String> words = new ArrayList<>(gameWordService.getWords(category));
+
+        Collections.shuffle(words);
+
+        String answer = null;
+
+        for (String word : words) {
+            if (room.usedAnswer(word)) {
+                answer = word;
+                break;
+            }
+        }
+
+        if (answer == null) {
+            throw new IllegalStateException(
+                    "해당 카테고리에 아직 사용하지 않은 제시어가 없습니다."
+            );
+        }
 
         GameRound round = new GameRound(
             roundNumber,category,answer,assignments
@@ -68,7 +87,7 @@ public class GameService {
 
         return round;
     }
-    public GameRound startNextRound(GameRoom room) {
+    public synchronized GameRound startNextRound(GameRoom room) {
 
         GameRound previousRound = getCurrentRound(room);
 
@@ -88,8 +107,27 @@ public class GameService {
             room,nextRoundNumber,previousRound.getCategory()
         );
     }
+    
+    public synchronized int markPlayerReady(GameRoom room, String playerId) {
+        GameRound round = getCurrentRound(room);
 
-    public void submitText(GameRoom room,String playerId,String textDescription) {
+        submissionValidator.validatePhase(
+            round,
+            GamePhase.ROUND_RESULT.name()
+        );
+
+        round.markPlayerReady(playerId);
+
+        return round.areAllPlayersReady()
+                ? room.getPlayers().size()
+                : getReadyCount(round);
+    }
+
+    private int getReadyCount(GameRound round) {
+        return round.getReadyCount();
+    }
+
+    public synchronized void submitText(GameRoom room,String playerId,String textDescription) {
 
         GameRound round = getCurrentRound(room);
 
@@ -113,7 +151,7 @@ public class GameService {
         changePhase(room, round, GamePhase.DRAWING.name());
     }
     
-    public void submitDrawing(GameRoom room,String playerId,byte[] drawingData) {
+    public synchronized void submitDrawing(GameRoom room,String playerId,byte[] drawingData) {
         GameRound round = getCurrentRound(room);
 
         // 검증
@@ -131,7 +169,7 @@ public class GameService {
         round.submitDrawing(drawingData);
         changePhase(room, round, GamePhase.ANSWERING.name());
     }
-    public void submitAnswer(GameRoom room,String playerId,String submittedAnswer) {
+    public synchronized void submitAnswer(GameRoom room,String playerId,String submittedAnswer) {
         GameRound round = getCurrentRound(room);
 
         // 검증
@@ -148,9 +186,10 @@ public class GameService {
         // 정답 저장 및 결과 단계로 이동
         round.submitAnswer(submittedAnswer);
         changePhase(room, round, GamePhase.ROUND_RESULT.name());
+        sendRoundResult(room);
     }
     
-    public void saveTextProgress(GameRoom room,String playerId,String textDescription) {
+    public synchronized void saveTextProgress(GameRoom room,String playerId,String textDescription) {
         GameRound round = getCurrentRound(room);
         submissionValidator.validateRole(
                 round,playerId,PlayerRole.TEXT_WRITER.name()
@@ -162,7 +201,7 @@ public class GameService {
         round.updateTextDescription(textDescription);
     }
     
-    public void saveDrawingProgress(GameRoom room,String playerId,byte[] drawingData) {
+    public synchronized void saveDrawingProgress(GameRoom room,String playerId,byte[] drawingData) {
         GameRound round = getCurrentRound(room);
 
         submissionValidator.validateRole(
@@ -176,7 +215,7 @@ public class GameService {
         round.updateDrawingData(drawingData);
     }
     
-    public void saveAnswerProgress(GameRoom room,String playerId,String submittedAnswer) {
+    public synchronized void saveAnswerProgress(GameRoom room,String playerId,String submittedAnswer) {
         GameRound round = getCurrentRound(room);
 
         submissionValidator.validateRole(
@@ -208,6 +247,23 @@ public class GameService {
             correct
         );
     }
+    private void sendRoundResult(GameRoom room) {
+        RoundResult result = createRoundResult(room);
+
+        for (Player player : room.getPlayers()) {
+            Message message = new Message();
+
+            message.setType(MessageType.ROUND_RESULT);
+            message.setRoundNumber(result.getRoundNumber());
+            message.setAnswer(result.getAnswer());
+            message.setTextDescription(result.getTextDescription());
+            message.setDrawingData(result.getDrawingData());
+            message.setSubmittedAnswer(result.getSubmittedAnswer());
+            message.setCorrect(result.isCorrect());
+
+            gameMessageSender.sendTo(player.getPlayerId(), message);
+        }
+    }
     private void changePhase(GameRoom room,GameRound round,String nextPhase) {
 
         String currentPhase = round.getPhase();
@@ -219,7 +275,7 @@ public class GameService {
         room.setPhase(nextPhase);
 
         // 결과 단계에는 다음 단계 타이머가 필요하지 않음
-        if (!GamePhase.ROUND_RESULT.equals(nextPhase)&& !GamePhase.FINISHED.equals(nextPhase)) {
+        if (!GamePhase.ROUND_RESULT.name().equals(nextPhase)&& !GamePhase.FINISHED.name().equals(nextPhase)) {
         	startPhaseTimer(room, round, nextPhase);
         	sendPhaseStarted(room, round, nextPhase);
         }
@@ -235,7 +291,7 @@ public class GameService {
     }
 
     // 시간 초과 처리
-    private void handleTimeout( GameRoom room,GameRound round,String expectedPhase) {
+    private synchronized void handleTimeout( GameRoom room,GameRound round,String expectedPhase) {
 
         //타이머가 실행되기 전에 이미 단계가 바뀌었거나
         //다른 라운드로 넘어갔다면 아무 작업도 하지 않음.
@@ -244,17 +300,47 @@ public class GameService {
                 || !expectedPhase.equals(room.getPhase())) {
             return;
         }
+        
+        System.out.printf(
+                "[%s] 시간 종료 / 방=%s / 라운드=%d / 단계=%s%n",
+                java.time.LocalTime.now(),
+                room.getRoomCode(),
+                round.getRoundNumber(),
+                expectedPhase
+        );
 
         switch (expectedPhase) {
         	case "TEXT_WRITING":
-        		changePhase(room,round,GamePhase.DRAWING.name());
-        		break;
+        		String description = round.getTextDescription();
+        		if (description == null || description.isBlank()) {
+        	        description = "아무 설명도 작성하지 못했습니다.";
+        	    }
+        	    if (!round.isTextSubmitted()) {
+        	        round.submitText(description);
+        	    }
+        	    changePhase(room, round, GamePhase.DRAWING.name());
+        	    break;
         	case "DRAWING":
-        		changePhase(room,round,GamePhase.ANSWERING.name());
-        		break;
+        		byte[] drawingData = round.getDrawingData();
+
+        		if (!round.isDrawingSubmitted() && drawingData != null&& drawingData.length > 0) {
+        		        round.submitDrawing(drawingData);
+        		}
+
+        	    changePhase(room, round, GamePhase.ANSWERING.name());
+        	    break;
         	case "ANSWERING":
-        		changePhase(room,round,GamePhase.ROUND_RESULT.name());
-        		break;
+        	    String submittedAnswer = round.getSubmittedAnswer();
+        	    if (submittedAnswer == null || submittedAnswer.isBlank()) {
+        	        submittedAnswer = "정답을 작성하지 못했습니다.";
+        	    }
+        	    if (!round.isAnswerSubmitted()) {
+        	        round.submitAnswer(submittedAnswer);
+        	    }
+
+        	    changePhase(room, round, GamePhase.ROUND_RESULT.name());
+        	    sendRoundResult(room);
+        	    break;
         	default:
         		break;
         }
@@ -268,6 +354,50 @@ public class GameService {
             + "-" + phase;
     }
 
+    public void cancelRoomTimer(GameRoom room) {
+        GameRound round = room.getCurrentRound();
+
+        if (round == null) {
+            return;
+        }
+
+        gameTimerService.cancelTimer(
+            getTimerId(room, round, round.getPhase())
+        );
+    }
+    
+ // 플레이어 연결 종료로 게임 중단
+    public synchronized void abortGame(GameRoom room, String disconnectedPlayerId) {
+
+        cancelRoomTimer(room);
+
+        room.setPhase(GamePhase.FINISHED.name());
+
+        GameRound round = room.getCurrentRound();
+
+        if (round != null) {
+            round.setPhase(GamePhase.FINISHED.name());
+        }
+
+        for (Player player : room.getPlayers()) {
+
+            // 연결이 끊긴 플레이어에게는 전송하지 않음
+            if (player.getPlayerId().equals(disconnectedPlayerId)) {
+                continue;
+            }
+
+            if (!player.isConnected()) {
+                continue;
+            }
+
+            Message message = new Message();
+            message.setType(MessageType.GAME_ABORTED);
+            message.setNotice("다른 플레이어의 연결이 끊겨 게임이 중단되었습니다.");
+
+            gameMessageSender.sendTo(player.getPlayerId(), message);
+        }
+    }
+    
     private GameRound getCurrentRound(GameRoom room) {
 
         GameRound round = room.getCurrentRound();
@@ -282,7 +412,7 @@ public class GameService {
         return round.getAssignments().entrySet()
             .stream()
             .filter(entry ->
-                PlayerRole.TEXT_WRITER.equals(entry.getValue()))
+                PlayerRole.TEXT_WRITER.name().equals(entry.getValue()))
             .map(entry -> round.getAnswerFor(entry.getKey()))
             .findFirst()
             .orElseThrow(() -> new IllegalStateException(
@@ -291,6 +421,14 @@ public class GameService {
     }
     
     private void sendPhaseStarted(GameRoom room, GameRound round, String phase) {
+    	
+    	System.out.printf(
+    	        "[%s] 단계 시작 / 방=%s / 라운드=%d / 단계=%s%n",
+    	        java.time.LocalTime.now(),
+    	        room.getRoomCode(),
+    	        round.getRoundNumber(),
+    	        phase
+    	);
 
         for (Player player : room.getPlayers()) {
 
@@ -315,13 +453,15 @@ public class GameService {
             }
 
             // DRAWER에게 Writer의 설명 전달
-            if (GamePhase.ANSWERING.name().equals(phase)
-                    && PlayerRole.ANSWERER.name().equals(role)) {
+            if (GamePhase.DRAWING.name().equals(phase)
+                    && PlayerRole.DRAWER.name().equals(role)) {
+
                 message.setTextDescription(round.getTextDescription());
             }
 
             // ANSWERER에게 그림 전달
-            if (PlayerRole.ANSWERER.name().equals(role)) {
+            if (GamePhase.ANSWERING.name().equals(phase)
+                    && PlayerRole.ANSWERER.name().equals(role)) {
                 message.setDrawingData(round.getDrawingData());
             }
 

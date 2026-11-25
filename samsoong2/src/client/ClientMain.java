@@ -1,16 +1,16 @@
 package client;
 
+import javax.swing.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-import common.GamePhase;
 import client.network.GameClient;
+import client.ui.*;
 import common.Message;
 import common.MessageType;
-import common.PlayerRole;
 
 public class ClientMain {
 
@@ -55,7 +55,12 @@ public class ClientMain {
             
             if(isHost) {
                 List<String> categories = client.waitForCategories();
-
+                if (categories == null) {
+                    System.out.println("서버 연결이 종료되었습니다.");
+                    client.close();
+                    return;
+                }
+                
                 System.out.println("\n카테고리 목록:");
 
                 for (int i = 0; i < categories.size(); i++) {
@@ -69,6 +74,7 @@ public class ClientMain {
 
                 if (selectedIndex < 0 || selectedIndex >= categories.size()) {
                     System.out.println("잘못된 카테고리 번호입니다.");
+                    client.close();
                     return;
                 }
 
@@ -93,60 +99,16 @@ public class ClientMain {
                     System.out.println("게임 시작 요청을 전송했습니다.");
                 } else if ("0".equals(startChoice)) {
                     System.out.println("게임 시작을 취소했습니다.");
+                    client.close();
+                    return;
                 } else {
                     System.out.println("잘못된 입력입니다.");
+                    client.close();
+                    return;
                 }
             }
-            
-            while (client.isConnected()) {
-
-                Message phaseMessage = client.waitForPhaseStarted();
-
-                String role = phaseMessage.getRole();
-                
-                System.out.println("[입력 처리] 단계=" + phaseMessage.getPhase() + " / 역할=" + role);
-
-                if (GamePhase.TEXT_WRITING.name().equals(phaseMessage.getPhase())
-                        && PlayerRole.TEXT_WRITER.name().equals(role)) {
-
-                    System.out.println("제시어를 보고 설명을 입력하세요.");
-                    String description = keyboard.readLine();
-
-                    Message textRequest = new Message();
-                    textRequest.setType(MessageType.SUBMIT_TEXT);
-                    textRequest.setRoundNumber(phaseMessage.getRoundNumber());
-                    textRequest.setTextDescription(description);
-
-                    client.send(textRequest);
-
-                    System.out.println("설명을 제출했습니다.");
-                } else if (GamePhase.ANSWERING.name()
-                        .equals(phaseMessage.getPhase())
-                        && PlayerRole.ANSWERER.name().equals(role)) {
-
-                    System.out.println("그림을 보고 정답을 입력하세요.");
-
-                    String answer = keyboard.readLine();
-
-                    if (answer == null) {
-                        client.close();
-                        break;
-                    }
-
-                    if (answer.isBlank()) {
-                        System.out.println("빈 정답은 전송하지 않습니다.");
-                        continue;
-                    }
-
-                    client.submitAnswer(
-                            phaseMessage.getRoundNumber(),
-                            answer
-                    );
-
-                    System.out.println("정답 제출 요청을 전송했습니다.");
-                }
-            }
-
+            // GUI 기반 게임 진행 시작
+            startGameGui(client);
         } catch (IOException e) {
             System.out.println(
                     "연결 또는 입출력 오류: " + e.getMessage()
@@ -162,5 +124,350 @@ public class ClientMain {
             System.out.println("카테고리 번호는 숫자로 입력해야 합니다.");
             client.close();
         }
+    }
+    private static void startGameGui(GameClient client) {
+    	GameFrame[] frameHolder = new GameFrame[1];
+    	//int[] currentRound = {0};
+    	
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                GameFrame frame = new GameFrame();
+                
+                frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+
+                frame.addWindowListener(new java.awt.event.WindowAdapter() {
+                    @Override
+                    public void windowClosing(java.awt.event.WindowEvent e) {
+                        frame.stopCountdown();
+                        client.close();
+                        frame.dispose();
+                    }
+                });
+                
+                //자동 저장 연결
+                frame.getTextWriterPanel().setProgressListener(description -> {
+                    Message request = new Message();
+                    request.setType(MessageType.SAVE_TEXT_PROGRESS);
+                    //request.setRoundNumber(currentRound[0]);
+                    request.setTextDescription(description);
+
+                    try {
+                        client.send(request);
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                });
+                frame.getAnswererPanel().setProgressListener(answer -> {
+                    Message request = new Message();
+                    request.setType(MessageType.SAVE_ANSWER_PROGRESS);
+                    //request.setRoundNumber(currentRound[0]);
+                    request.setSubmittedAnswer(answer);
+
+                    try {
+                        client.send(request);
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                });
+                frame.getDrawingPanel().setProgressListener(drawingData -> {
+                    Message request = new Message();
+                    request.setType(MessageType.SAVE_DRAWING_PROGRESS);
+                    //request.setRoundNumber(currentRound[0]);
+                    request.setDrawingData(drawingData);
+
+                    try {
+                        client.send(request);
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                });
+                
+                connectGameButtons(client, frame, currentRound);
+                frame.setVisible(true);
+
+                frameHolder[0] = frame;
+            });
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            client.close();
+            return;
+
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            client.close();
+            throw new RuntimeException("게임 화면 생성에 실패했습니다.", e.getCause());
+        }
+
+        GameFrame gameFrame = frameHolder[0];
+
+        Thread gameThread = new Thread(() -> {
+
+            try {
+                while (true) {
+
+                    Message message = client.waitForPhaseStarted();
+                    if (message == null) {
+                    	SwingUtilities.invokeLater(() -> {
+                            gameFrame.stopCountdown();
+                            gameFrame.dispose();
+                        });
+                    	break;
+                    }
+                    SwingUtilities.invokeLater(() -> {
+
+                        switch (message.getType()) {
+
+                            case PHASE_STARTED:
+                            	String role = message.getRole();
+                            	String phase = message.getPhase();
+                            	int round = message.getRoundNumber();
+                            	//currentRound[0] = round;
+
+                            	switch (phase) {
+                            	    case "TEXT_WRITING":
+                            	        gameFrame.setPhase("설명 작성 단계");
+                            	        break;
+                            	    case "DRAWING":
+                            	        gameFrame.setPhase("그림 그리기 단계");
+                            	        break;
+                            	    case "ANSWERING":
+                            	        gameFrame.setPhase("정답 맞히기 단계");
+                            	        break;
+                            	    default:
+                            	        gameFrame.setPhase("게임 진행 중");
+                            	        break;
+                            	}
+                                gameFrame.startCountdown(message.getDeadlineEpochMillis(),() -> {
+                                	        if ("TEXT_WRITER".equals(role)) {
+                                	            gameFrame.getTextWriterPanel().setInputEnabled(false);
+                                	        } else if ("DRAWER".equals(role)) {
+                                	            gameFrame.getDrawingPanel().getSubmitButton().setEnabled(false);
+                                	            gameFrame.getDrawingPanel().setCanDraw(false);
+                                	        } else if ("ANSWERER".equals(role)) {
+                                	            gameFrame.getAnswererPanel().setInputEnabled(false);
+                                	        }
+                                	}
+                                );
+                                
+                                if ("TEXT_WRITER".equals(role)) {
+                                    gameFrame.showTextWriter(
+                                        round,
+                                        message.getAnswer()
+                                    );
+
+                                } else if ("DRAWER".equals(role)) {
+                                    gameFrame.showDrawing(
+                                        round,
+                                        message.getTextDescription()
+                                    );
+
+                                } else if ("ANSWERER".equals(role)) {
+                                    gameFrame.showAnswerer(
+                                        round,
+                                        message.getDrawingData()
+                                    );
+                                }
+                            	setRoleInputEnabled(gameFrame, role, phase);
+                                break;
+
+                            case ROUND_RESULT:
+                            	gameFrame.stopCountdown();
+                            	
+                            	gameFrame.getTextWriterPanel().setInputEnabled(false);
+                                gameFrame.getDrawingPanel().setCanDraw(false);
+                                gameFrame.getDrawingPanel().getSubmitButton().setEnabled(false);
+                                gameFrame.getAnswererPanel().setInputEnabled(false);
+                            	
+                                gameFrame.setPhase("라운드 결과");
+                                
+                                gameFrame.showResult(
+                                    message.getRoundNumber(),
+                                    message.getAnswer(),
+                                    message.getTextDescription(),
+                                    message.getDrawingData(),
+                                    message.getSubmittedAnswer(),
+                                    message.isCorrect()
+                                );
+                                break;
+                            case CONTINUE_STATUS:
+                                gameFrame.getResultPanel().setContinueStatus(
+                                    message.getAgreedCount(),
+                                    message.getPlayerCount()
+                                );
+                                break;
+                            case ERROR:
+                                JOptionPane.showMessageDialog(
+                                    gameFrame,
+                                    message.getNotice(),
+                                    "서버 오류: " + message.getErrorCode(),
+                                    JOptionPane.ERROR_MESSAGE
+                                );
+                                if ("TEXT_VALIDATION_FAILED".equals(message.getErrorCode())) {
+                                    // 제시어 검증 실패: 다시 입력할 수 있도록 활성화
+                                    gameFrame.getTextWriterPanel().setInputEnabled(true);
+                                } else {
+                                    // 그 외 서버 오류: 게임 창 종료
+                                    gameFrame.stopCountdown();
+                                    gameFrame.dispose();
+                                    client.close();
+                                }
+                                break;
+                            case GAME_FINISHED:
+                            case ROOM_LEFT:
+                            case GAME_ABORTED:
+                            	gameFrame.stopCountdown();
+                                JOptionPane.showMessageDialog(
+                                    gameFrame,
+                                    message.getNotice()
+                                );
+
+                                gameFrame.dispose();
+                                client.close();
+                                break;
+
+                            default:
+                                break;
+                        }
+                    });
+
+                    if (message.getType() == MessageType.GAME_FINISHED
+                            || message.getType() == MessageType.ROOM_LEFT
+                            || message.getType() == MessageType.GAME_ABORTED) {
+                        break;
+                    }
+                }
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
+        });
+
+        gameThread.start();
+    }
+    
+    private static void setRoleInputEnabled(GameFrame gameFrame, String role, String phase) {
+
+        boolean isTextWriter = "TEXT_WRITER".equals(role) && "TEXT_WRITING".equals(phase);
+        boolean isDrawer = "DRAWER".equals(role) && "DRAWING".equals(phase);
+        boolean isAnswerer = "ANSWERER".equals(role) && "ANSWERING".equals(phase);
+
+        gameFrame.getTextWriterPanel().setInputEnabled(isTextWriter);
+        gameFrame.getDrawingPanel().setCanDraw(isDrawer);
+        gameFrame.getDrawingPanel().getSubmitButton().setEnabled(isDrawer);
+        gameFrame.getAnswererPanel().setInputEnabled(isAnswerer);
+    }
+    
+    private static void connectGameButtons(GameClient client, GameFrame gameFrame, int[] currentRound) {
+
+        // 설명 제출
+        gameFrame.getTextWriterPanel().getSubmitButton().addActionListener(e -> {
+
+            String description = gameFrame.getTextWriterPanel().getDescription();
+
+            if (description.isBlank()) {
+                JOptionPane.showMessageDialog(gameFrame, "설명을 입력하세요.");
+                return;
+            }
+
+            Message request = new Message();
+            request.setType(MessageType.SUBMIT_TEXT);
+            //request.setRoundNumber(currentRound[0]);
+            request.setTextDescription(description);
+
+            try {
+                client.send(request);
+                gameFrame.getTextWriterPanel().setInputEnabled(false);
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(gameFrame, "설명 전송에 실패했습니다.");
+                ex.printStackTrace();
+            }
+        });
+
+
+        // 그림 제출
+        gameFrame.getDrawingPanel().getSubmitButton().addActionListener(e -> {
+
+            try {
+                byte[] drawingData = gameFrame.getDrawingPanel().getDrawingData();
+
+                Message request = new Message();
+                request.setType(MessageType.SUBMIT_DRAWING);
+                //request.setRoundNumber(currentRound[0]);
+                request.setDrawingData(drawingData);
+
+                client.send(request);
+
+                gameFrame.getDrawingPanel().getSubmitButton().setEnabled(false);
+                gameFrame.getDrawingPanel().setCanDraw(false);
+
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(gameFrame, "그림 전송에 실패했습니다.");
+                ex.printStackTrace();
+            }
+        });
+
+
+        // 정답 제출
+        gameFrame.getAnswererPanel().getSubmitButton().addActionListener(e -> {
+
+            String answer = gameFrame.getAnswererPanel().getAnswer();
+
+            if (answer.isBlank()) {
+                JOptionPane.showMessageDialog(gameFrame, "정답을 입력하세요.");
+                return;
+            }
+
+            Message request = new Message();
+            request.setType(MessageType.SUBMIT_ANSWER);
+            //request.setRoundNumber(currentRound[0]);
+            request.setSubmittedAnswer(answer);
+
+            try {
+                client.send(request);
+                gameFrame.getAnswererPanel().setInputEnabled(false);
+                
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(gameFrame, "정답 전송에 실패했습니다.");
+                ex.printStackTrace();
+            }
+        });
+
+
+     // 다음 라운드 진행
+        gameFrame.getResultPanel().getNextButton().addActionListener(e -> {
+
+			/*
+            System.out.println(
+                    "[버튼 클릭] 라운드=" + currentRound[0]
+                            + " / 연결=" + client.isConnected()
+            );
+			*/
+            Message request = new Message();
+            request.setType(MessageType.CONTINUE_RESPONSE);
+            //request.setRoundNumber(currentRound[0]);
+            request.setAgree(true);
+
+            try {
+                System.out.println("[다음 라운드] 전송 시작");
+
+                client.send(request);
+
+                System.out.println("[다음 라운드] 전송 완료");
+
+                gameFrame.getResultPanel().getNextButton()
+                        .setText("확인 완료 — 다른 참가자 대기");
+
+                gameFrame.getResultPanel().getNextButton()
+                        .setEnabled(false);
+
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(
+                        gameFrame,
+                        "다음 라운드 요청에 실패했습니다."
+                );
+				 ex.printStackTrace();
+            }
+        });
     }
 }
