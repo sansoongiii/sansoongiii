@@ -132,6 +132,8 @@ public class ResultPanel extends JPanel {
         		drawingLabel.setText("그림을 불러오지 못했습니다.");
         	}
         }
+        continueStatusLabel.setText("다음 라운드 진행 확인: 0/3");
+        nextButton.setText("다음 라운드");
         nextButton.setEnabled(true);
     }
     

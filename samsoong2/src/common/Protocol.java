@@ -61,10 +61,6 @@ public final class Protocol {
             case SAVE_TEXT_PROGRESS:
                 payload = buildData(message.getTextDescription());
                 break;
-
-            case SAVE_DRAWING_PROGRESS:
-                payload = buildData(encodeImage(message.getDrawingData()));
-                break;
                 
             case SAVE_ANSWER_PROGRESS:
                 payload = buildData(message.getSubmittedAnswer());
@@ -212,11 +208,6 @@ public final class Protocol {
             case SAVE_TEXT_PROGRESS:
                 requireCount(values, 1);
                 message.setTextDescription(values[0]);
-                break;
-                
-            case SAVE_DRAWING_PROGRESS:
-                requireCount(values, 1);
-                message.setDrawingData(decodeImage(values[0]));
                 break;
                 
             case SAVE_ANSWER_PROGRESS:

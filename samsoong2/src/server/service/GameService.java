@@ -300,6 +300,14 @@ public class GameService {
                 || !expectedPhase.equals(room.getPhase())) {
             return;
         }
+        
+        System.out.printf(
+                "[%s] 시간 종료 / 방=%s / 라운드=%d / 단계=%s%n",
+                java.time.LocalTime.now(),
+                room.getRoomCode(),
+                round.getRoundNumber(),
+                expectedPhase
+        );
 
         switch (expectedPhase) {
         	case "TEXT_WRITING":
@@ -413,6 +421,14 @@ public class GameService {
     }
     
     private void sendPhaseStarted(GameRoom room, GameRound round, String phase) {
+    	
+    	System.out.printf(
+    	        "[%s] 단계 시작 / 방=%s / 라운드=%d / 단계=%s%n",
+    	        java.time.LocalTime.now(),
+    	        room.getRoomCode(),
+    	        round.getRoundNumber(),
+    	        phase
+    	);
 
         for (Player player : room.getPlayers()) {
 
@@ -437,8 +453,8 @@ public class GameService {
             }
 
             // DRAWER에게 Writer의 설명 전달
-            if (GamePhase.ANSWERING.name().equals(phase)
-                    && PlayerRole.ANSWERER.name().equals(role)) {
+            if (GamePhase.DRAWING.name().equals(phase)
+                    && PlayerRole.DRAWER.name().equals(role)) {
 
                 message.setTextDescription(round.getTextDescription());
             }

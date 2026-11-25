@@ -434,8 +434,13 @@ public class ClientMain {
         });
 
 
-        // 다음 라운드 진행
+     // 다음 라운드 진행
         gameFrame.getResultPanel().getNextButton().addActionListener(e -> {
+
+            System.out.println(
+                    "[버튼 클릭] 라운드=" + currentRound[0]
+                            + " / 연결=" + client.isConnected()
+            );
 
             Message request = new Message();
             request.setType(MessageType.CONTINUE_RESPONSE);
@@ -443,12 +448,25 @@ public class ClientMain {
             request.setAgree(true);
 
             try {
+                System.out.println("[다음 라운드] 전송 시작");
+
                 client.send(request);
-                gameFrame.getResultPanel().getNextButton().setEnabled(false);
+
+                System.out.println("[다음 라운드] 전송 완료");
+
+                gameFrame.getResultPanel().getNextButton()
+                        .setText("확인 완료 — 다른 참가자 대기");
+
+                gameFrame.getResultPanel().getNextButton()
+                        .setEnabled(false);
 
             } catch (IOException ex) {
-                JOptionPane.showMessageDialog(gameFrame, "다음 라운드 요청에 실패했습니다.");
                 ex.printStackTrace();
+
+                JOptionPane.showMessageDialog(
+                        gameFrame,
+                        "다음 라운드 요청에 실패했습니다."
+                );
             }
         });
     }
