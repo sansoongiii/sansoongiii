@@ -98,7 +98,7 @@ public class ClientHandler implements Runnable {
         return playerId;
     }
 
-    public void close() {
+    public synchronized void close() {
         if (!closed.compareAndSet(false, true)) {
             return;
         }
