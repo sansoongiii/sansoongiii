@@ -127,7 +127,8 @@ public class ClientMain {
     }
     private static void startGameGui(GameClient client) {
     	GameFrame[] frameHolder = new GameFrame[1];
-
+    	int[] currentRound = {0};
+    	
         try {
             SwingUtilities.invokeAndWait(() -> {
                 GameFrame frame = new GameFrame();
@@ -147,6 +148,7 @@ public class ClientMain {
                 frame.getTextWriterPanel().setProgressListener(description -> {
                     Message request = new Message();
                     request.setType(MessageType.SAVE_TEXT_PROGRESS);
+                    request.setRoundNumber(currentRound[0]);
                     request.setTextDescription(description);
 
                     try {
@@ -158,6 +160,7 @@ public class ClientMain {
                 frame.getAnswererPanel().setProgressListener(answer -> {
                     Message request = new Message();
                     request.setType(MessageType.SAVE_ANSWER_PROGRESS);
+                    request.setRoundNumber(currentRound[0]);
                     request.setSubmittedAnswer(answer);
 
                     try {
@@ -169,6 +172,7 @@ public class ClientMain {
                 frame.getDrawingPanel().setProgressListener(drawingData -> {
                     Message request = new Message();
                     request.setType(MessageType.SAVE_DRAWING_PROGRESS);
+                    request.setRoundNumber(currentRound[0]);
                     request.setDrawingData(drawingData);
 
                     try {
@@ -178,7 +182,7 @@ public class ClientMain {
                     }
                 });
                 
-                connectGameButtons(client, frame);
+                connectGameButtons(client, frame, currentRound);
                 frame.setVisible(true);
 
                 frameHolder[0] = frame;
@@ -217,6 +221,7 @@ public class ClientMain {
                             	String role = message.getRole();
                             	String phase = message.getPhase();
                             	int round = message.getRoundNumber();
+                            	currentRound[0] = round;
 
                             	switch (phase) {
                             	    case "TEXT_WRITING":
@@ -353,7 +358,7 @@ public class ClientMain {
         gameFrame.getAnswererPanel().setInputEnabled(isAnswerer);
     }
     
-    private static void connectGameButtons(GameClient client, GameFrame gameFrame) {
+    private static void connectGameButtons(GameClient client, GameFrame gameFrame, int[] currentRound) {
 
         // 설명 제출
         gameFrame.getTextWriterPanel().getSubmitButton().addActionListener(e -> {
@@ -367,6 +372,7 @@ public class ClientMain {
 
             Message request = new Message();
             request.setType(MessageType.SUBMIT_TEXT);
+            request.setRoundNumber(currentRound[0]);
             request.setTextDescription(description);
 
             try {
@@ -387,6 +393,7 @@ public class ClientMain {
 
                 Message request = new Message();
                 request.setType(MessageType.SUBMIT_DRAWING);
+                request.setRoundNumber(currentRound[0]);
                 request.setDrawingData(drawingData);
 
                 client.send(request);
@@ -413,6 +420,7 @@ public class ClientMain {
 
             Message request = new Message();
             request.setType(MessageType.SUBMIT_ANSWER);
+            request.setRoundNumber(currentRound[0]);
             request.setSubmittedAnswer(answer);
 
             try {
@@ -431,6 +439,7 @@ public class ClientMain {
 
             Message request = new Message();
             request.setType(MessageType.CONTINUE_RESPONSE);
+            request.setRoundNumber(currentRound[0]);
             request.setAgree(true);
 
             try {

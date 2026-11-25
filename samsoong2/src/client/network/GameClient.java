@@ -174,7 +174,7 @@ public class GameClient {
         phaseQueue.offer(message);
     }
 
-    public Message waitForPhaseStarted() throws InterruptedException, IOException {
+    public Message waitForPhaseStarted() throws InterruptedException {
     	 while (connected || !phaseQueue.isEmpty()) {
     	        Message message = phaseQueue.poll(200, TimeUnit.MILLISECONDS);
 
