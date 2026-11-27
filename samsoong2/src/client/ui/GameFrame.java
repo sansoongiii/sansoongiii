@@ -17,6 +17,9 @@ public class GameFrame extends JFrame {
     private final JLabel roundLabel;
     private final JLabel timeLabel;
     
+    private final JPanel infoPanel;
+    private final RoomEntryPanel roomEntryPanel;
+    private final WaitingRoomPanel waitingRoomPanel;
     private final TextWriterPanel textWriterPanel;
     private final DrawingPanel drawingPanel;
     private final AnswererPanel answererPanel;
@@ -30,8 +33,10 @@ public class GameFrame extends JFrame {
         setLayout(new BorderLayout(5, 5));
 
         // 상단 정보 영역
-        JPanel infoPanel = new JPanel(new BorderLayout());
+        infoPanel = new JPanel(new BorderLayout());
 
+        roomEntryPanel = new RoomEntryPanel();
+        waitingRoomPanel = new WaitingRoomPanel();
         roundLabel = new JLabel("라운드 1", SwingConstants.LEFT);
         phaseLabel = new JLabel("대기 중", SwingConstants.CENTER);
         timeLabel = new JLabel("남은 시간: --초", SwingConstants.RIGHT);
@@ -49,6 +54,8 @@ public class GameFrame extends JFrame {
         answererPanel = new AnswererPanel();
         resultPanel = new ResultPanel();
 
+        mainPanel.add(roomEntryPanel, "ROOM_ENTRY");
+        mainPanel.add(waitingRoomPanel, "WAITING_ROOM");
         mainPanel.add(textWriterPanel, "TEXT_WRITER");
         mainPanel.add(drawingPanel, "DRAWER");
         mainPanel.add(answererPanel, "ANSWERER");
@@ -81,6 +88,14 @@ public class GameFrame extends JFrame {
     public void resetRemainingTime() {
         timeLabel.setText("남은 시간: --초");
     }
+    
+    public RoomEntryPanel getRoomEntryPanel() {
+        return roomEntryPanel;
+    }
+
+    public WaitingRoomPanel getWaitingRoomPanel() {
+        return waitingRoomPanel;
+    }
 
     public TextWriterPanel getTextWriterPanel() {
         return textWriterPanel;
@@ -96,6 +111,16 @@ public class GameFrame extends JFrame {
 
     public ResultPanel getResultPanel() {
         return resultPanel;
+    }
+    
+    public void showRoomEntry() {
+        infoPanel.setVisible(false);
+        showScreen("ROOM_ENTRY");
+    }
+
+    public void showWaitingRoom() {
+        infoPanel.setVisible(false);
+        showScreen("WAITING_ROOM");
     }
     
     public void showTextWriter(int round, String word) {
