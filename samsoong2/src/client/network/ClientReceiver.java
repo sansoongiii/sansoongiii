@@ -78,9 +78,14 @@ public class ClientReceiver implements Runnable {
 
         // 기존 ClientMain의 콘솔 테스트용 전달은 유지
         switch (message.getType()) {
-            case CATEGORY_LIST:
-                client.receiveCategories(message.getCategories());
-                break;
+	        case ROOM_UPDATED:
+	            client.receivePhaseStarted(message);
+	            break;
+	
+	        case CATEGORY_LIST:
+	            client.receiveCategories(message.getCategories());
+	            client.receivePhaseStarted(message);
+	            break;
 
             case PHASE_STARTED:
                 client.setCurrentRole(message.getRole());

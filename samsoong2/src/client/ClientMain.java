@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import client.controller.ConnectionController;
 import client.network.GameClient;
 import client.ui.*;
 import common.Message;
@@ -22,6 +23,7 @@ public class ClientMain {
             client.connect("127.0.0.1");
             client.startReceiving();
         
+            /*
             BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
             System.out.println("1: 방 생성 / 2: 방 입장");
             String choice = keyboard.readLine();
@@ -106,7 +108,7 @@ public class ClientMain {
                     client.close();
                     return;
                 }
-            }
+            } */
             // GUI 기반 게임 진행 시작
             startGameGui(client);
         } catch (IOException e) {
@@ -115,12 +117,12 @@ public class ClientMain {
             );
 
             client.close();
-    	} catch (InterruptedException e) {
+    	} /* catch (InterruptedException e) {
     		System.out.println("카테고리 대기가 중단되었습니다.");
     		Thread.currentThread().interrupt();
     		client.close();
     		
-    	} catch (NumberFormatException e) {
+    	} */ catch (NumberFormatException e) {
             System.out.println("카테고리 번호는 숫자로 입력해야 합니다.");
             client.close();
         }
@@ -128,6 +130,7 @@ public class ClientMain {
     private static void startGameGui(GameClient client) {
     	GameFrame[] frameHolder = new GameFrame[1];
     	int[] currentRound = {0};
+    	ConnectionController conn = new ConnectionController(client);
     	
         try {
             SwingUtilities.invokeAndWait(() -> {
@@ -183,6 +186,8 @@ public class ClientMain {
                 });
                 
                 connectGameButtons(client, frame, currentRound);
+                connectLobbyButtons(client, conn, frame);
+                frame.showRoomEntry();
                 frame.setVisible(true);
 
                 frameHolder[0] = frame;
@@ -216,7 +221,32 @@ public class ClientMain {
                     SwingUtilities.invokeLater(() -> {
 
                         switch (message.getType()) {
+                        
+                        
+                        case ROOM_UPDATED:
+                            gameFrame.getWaitingRoomPanel().updateRoomStatus(
+                                message.getRoomCode(),
+                                message.getPlayerCount()
+                            );
+                            gameFrame.showWaitingRoom();
 
+                            // 3명이 모두 모이면 서버에 카테고리 목록 요청
+                            if (message.getPlayerCount() >= 3) {
+                                try {
+									conn.requestCategories();
+                                } catch (IOException ex) {
+                                    ex.printStackTrace();
+                                }
+                            }
+                            break;
+
+                        case CATEGORY_LIST:
+                            // 방장 화면에만 카테고리 개수만큼 버튼 자동 생성
+                            gameFrame.getWaitingRoomPanel().showCategoryButtons(
+                                message.getCategories()
+                            );
+                            break;
+                         
                             case PHASE_STARTED:
                             	String role = message.getRole();
                             	String phase = message.getPhase();
@@ -312,15 +342,17 @@ public class ClientMain {
                                     client.close();
                                 }
                                 break;
-                            case GAME_FINISHED:
                             case ROOM_LEFT:
                             case GAME_ABORTED:
-                            	gameFrame.stopCountdown();
-                                JOptionPane.showMessageDialog(
-                                    gameFrame,
-                                    message.getNotice()
-                                );
+                                gameFrame.stopCountdown();
+                                JOptionPane.showMessageDialog(gameFrame, message.getNotice());
+                                gameFrame.getRoomEntryPanel().setButtonsEnabled(true);
+                                gameFrame.showRoomEntry();
+                                break;
 
+                            case GAME_FINISHED:
+                                gameFrame.stopCountdown();
+                                JOptionPane.showMessageDialog(gameFrame, message.getNotice());
                                 gameFrame.dispose();
                                 client.close();
                                 break;
@@ -330,9 +362,7 @@ public class ClientMain {
                         }
                     });
 
-                    if (message.getType() == MessageType.GAME_FINISHED
-                            || message.getType() == MessageType.ROOM_LEFT
-                            || message.getType() == MessageType.GAME_ABORTED) {
+                    if (message.getType() == MessageType.GAME_FINISHED) {
                         break;
                     }
                 }
@@ -359,7 +389,7 @@ public class ClientMain {
     }
     
     private static void connectGameButtons(GameClient client, GameFrame gameFrame, int[] currentRound) {
-
+    	   	
         // 설명 제출
         gameFrame.getTextWriterPanel().getSubmitButton().addActionListener(e -> {
 
@@ -467,6 +497,65 @@ public class ClientMain {
                         "다음 라운드 요청에 실패했습니다."
                 );
 				 ex.printStackTrace();
+            }
+        });
+    }
+    
+    private static void connectLobbyButtons(GameClient client, ConnectionController conn, GameFrame gameFrame) {
+        RoomEntryPanel entryPanel = gameFrame.getRoomEntryPanel();
+        WaitingRoomPanel waitingPanel = gameFrame.getWaitingRoomPanel();
+
+        // 방 생성
+        entryPanel.getCreateRoomButton().addActionListener(e -> {
+            try {
+                waitingPanel.setHost(true);
+                entryPanel.setButtonsEnabled(false);
+                conn.createRoom();
+            } catch (IOException ex) {
+                entryPanel.setButtonsEnabled(true);
+                JOptionPane.showMessageDialog(gameFrame, "방 생성 요청에 실패했습니다.");
+                ex.printStackTrace();
+            }
+        });
+
+        // 방 입장
+        entryPanel.getJoinRoomButton().addActionListener(e -> {
+            String roomCode = JOptionPane.showInputDialog(gameFrame, "입장할 방 코드를 입력하세요:");
+            if (roomCode == null || roomCode.isBlank()) {
+                return;
+            }
+            try {
+                waitingPanel.setHost(false);
+                entryPanel.setButtonsEnabled(false);
+                conn.joinRoom(roomCode.trim());
+            } catch (IOException ex) {
+                entryPanel.setButtonsEnabled(true);
+                JOptionPane.showMessageDialog(gameFrame, "방 입장 요청에 실패했습니다.");
+                ex.printStackTrace();
+            }
+        });
+
+        // 카테고리 선택
+        waitingPanel.setCategorySelectListener(selectedCategory -> {
+            try {
+                conn.selectCategory(selectedCategory);
+                
+                Message request = new Message();
+                request.setType(MessageType.START_GAME);
+				client.send(request);
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(gameFrame, "카테고리 선택 전송에 실패했습니다.");
+                ex.printStackTrace();
+            }
+        });
+
+        // 방 나가기
+        waitingPanel.getLeaveRoomButton().addActionListener(e -> {
+            try {
+                conn.leaveRoom();
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(gameFrame, "방 나가기 요청에 실패했습니다.");
+                ex.printStackTrace();
             }
         });
     }
