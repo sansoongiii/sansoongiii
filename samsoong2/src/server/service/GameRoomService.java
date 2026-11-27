@@ -93,4 +93,21 @@ public class GameRoomService {
     private String generateRoomCode() {
         return UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
     }
+    
+    // 플레이어 퇴장
+    public synchronized GameRoom leaveRoom(String playerId) {
+        GameRoom room = findRoomByPlayerId(playerId);
+
+        if (room == null) {
+            return null;
+        }
+
+        room.getPlayers().removeIf(player -> player.getPlayerId().equals(playerId));
+
+        if (room.getPlayers().isEmpty()) {
+            rooms.remove(room.getRoomCode());
+        }
+
+        return room;
+    }
 }

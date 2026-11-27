@@ -91,9 +91,16 @@ public class GameServer implements GameMessageSender {
 				}
 			}
 
-			// 게임이 진행 중이라면 현재 타이머 취소
+			// 게임이 진행 중이라면 게임 중단 후 방 삭제
 			if (room.getCurrentRound() != null && !GamePhase.FINISHED.name().equals(room.getPhase())) {
 				gameService.abortGame(room, playerId);
+				gameRoomService.removeRoom(room.getRoomCode());
+			} else {
+				// 대기실 등에서 나간 경우 해당 플레이어만 방에서 제거
+				gameRoomService.leaveRoom(playerId);
+				if (!room.getPlayers().isEmpty()) {
+					sendRoomUpdated(room);
+				}
 			}
 		}
 
@@ -114,6 +121,10 @@ public class GameServer implements GameMessageSender {
 
 		case JOIN_ROOM:
 			joinRoom(playerId, message.getRoomCode());
+			break;
+
+		case LEAVE_ROOM:
+			leaveRoom(playerId);
 			break;
 
 		case GET_CATEGORIES:
@@ -350,6 +361,28 @@ public class GameServer implements GameMessageSender {
 		} catch (IllegalStateException | IllegalArgumentException e) {
 			sendError(playerId, "START_FAILED", e.getMessage());
 		}
+	}
+	
+	private void leaveRoom(String playerId) {
+		GameRoom room = gameRoomService.leaveRoom(playerId);
+
+		if (room == null) {
+			sendError(playerId, "NOT_IN_ROOM", "참여 중인 방이 없습니다.");
+			return;
+		}
+
+		// 나간 사람에게 퇴장 완료 알림 전송
+		Message leftMsg = new Message();
+		leftMsg.setType(MessageType.ROOM_LEFT);
+		leftMsg.setNotice("방에서 나갔습니다.");
+		sendTo(playerId, leftMsg);
+
+		// 남은 사람들에게 인원 수 갱신 전송
+		if (!room.getPlayers().isEmpty()) {
+			sendRoomUpdated(room);
+		}
+
+		System.out.println("방 퇴장 완료: " + room.getRoomCode() + " / 남은 인원: " + room.getPlayers().size());
 	}
 
 	private void handleGameRequest(String playerId, Message message) {
