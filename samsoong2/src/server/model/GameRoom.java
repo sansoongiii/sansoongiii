@@ -19,6 +19,8 @@ public class GameRoom {
     private String category = "";
     private final Set<String> usedAnswers = new HashSet<>();
     
+    private final Set<String> restartVotes = new HashSet<>();
+
     public GameRoom(String roomCode) {
         if (roomCode == null || roomCode.isBlank()) {
             throw new IllegalArgumentException("방 코드는 필수입니다.");
@@ -98,5 +100,44 @@ public class GameRoom {
         }
 
         return usedAnswers.add(answer);
+    }
+
+    // 재시작 투표 등록 (중복 투표 방지)
+    public synchronized boolean voteRestart(String playerId) {
+        if (playerId == null || playerId.isBlank()) {
+            throw new IllegalArgumentException("플레이어 ID는 필수입니다.");
+        }
+
+        boolean isPlayer = players.stream()
+            .anyMatch(player -> player.getPlayerId().equals(playerId));
+
+        if (!isPlayer) {
+        throw new IllegalArgumentException("방에 참여하지 않은 플레이어입니다.");
+        }
+
+        return restartVotes.add(playerId);
+    }
+
+    // 현재 재시작 동의 인원    
+    public synchronized int getRestartVoteCount() {
+        return restartVotes.size();
+    }
+
+    // 모든 플레이어가 재시작에 동의했는지 확인
+    public synchronized boolean allPlayersVotedRestart() {
+        return restartVotes.size() == players.size()
+            && !players.isEmpty();
+    }
+
+    public synchronized void resetForRestart() {
+        if (!GamePhase.FINISHED.name().equals(phase) && !GamePhase.ROUND_RESULT.name().equals(phase)) {
+            throw new IllegalStateException("게임 결과 화면에서만 재시작할 수 있습니다.");
+        }
+
+        currentRound = null;
+        phase = GamePhase.WAITING.name();
+        category = "";
+
+        restartVotes.clear();
     }
 }

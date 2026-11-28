@@ -50,6 +50,7 @@ public class ViewController {
                 connectProgressListeners();
                 connectGameButtons();
                 connectLobbyButtons();
+                connectPostGameButtons();
 
                 frame.showRoomEntry();
                 frame.setVisible(true);
@@ -103,6 +104,14 @@ public class ViewController {
                         message.getAgreedCount(),
                         message.getPlayerCount()
                     );
+                    break;
+
+                case POST_GAME_OPTIONS:
+                    handlePostGameOptions(message);
+                    break;
+
+                case WAITING_FOR_HOST:
+                    handleWaitingForHost(message);
                     break;
 
                 case ERROR:
@@ -207,6 +216,24 @@ public class ViewController {
             message.getDrawingData(),
             message.getSubmittedAnswer(),
             message.isCorrect()
+        );
+    }
+
+    private void handlePostGameOptions(Message message) {
+        gameFrame.stopCountdown(); 
+
+        gameFrame.showPostGame(
+            true,
+            message.getNotice()
+        );
+    }
+
+    private void handleWaitingForHost(Message message) {
+        gameFrame.stopCountdown();
+
+        gameFrame.showPostGame(
+            false,
+            message.getNotice()
         );
     }
 
@@ -411,6 +438,8 @@ public class ViewController {
             }
         });
 
+    
+
         // 방 입장
         entryPanel.getJoinRoomButton().addActionListener(e -> {
             String roomCode = JOptionPane.showInputDialog(gameFrame, "입장할 방 코드를 입력하세요:");
@@ -448,6 +477,58 @@ public class ViewController {
                 conn.leaveRoom();
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(gameFrame, "방 나가기 요청에 실패했습니다.");
+                ex.printStackTrace();
+            }
+        });
+    }
+    
+    private void connectPostGameButtons() {
+        // 재시작 버튼
+        gameFrame.getPostGamePanel().setRestartListener(() -> {
+            Message request = new Message();
+            request.setType(MessageType.RESTART_GAME);
+
+            try {
+                client.send(request);
+
+                // 카테고리 선택을 기다리는 화면으로 변경
+                gameFrame.showPostGame(
+                    false,
+                    "새로운 게임을 준비하고 있습니다. 잠시 기다려주세요."
+                );
+
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(
+                    gameFrame,
+                    "재시작 요청에 실패했습니다."
+                );
+                ex.printStackTrace();
+            }
+        });
+
+        // 게임 종료 버튼
+        gameFrame.getPostGamePanel().setEndListener(() -> {
+            int choice = JOptionPane.showConfirmDialog(
+                gameFrame,
+                "정말 게임을 종료하시겠습니까?",
+                "게임 종료",
+                JOptionPane.YES_NO_OPTION
+            );
+
+            if (choice != JOptionPane.YES_OPTION) {
+                return;
+            }
+
+            Message request = new Message();
+            request.setType(MessageType.GAME_FINISHED);
+
+            try {
+                client.send(request);
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(
+                    gameFrame,
+                    "게임 종료 요청에 실패했습니다."
+                );
                 ex.printStackTrace();
             }
         });

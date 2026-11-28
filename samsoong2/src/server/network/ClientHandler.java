@@ -86,6 +86,8 @@ public class ClientHandler implements Runnable {
 
         writer.println(Protocol.build(message));
 
+        writer.flush();
+        
         if (writer.checkError()) {
             System.out.println(
                     "메시지 전송 실패: " + playerId

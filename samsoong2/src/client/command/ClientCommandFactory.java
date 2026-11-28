@@ -36,6 +36,12 @@ public class ClientCommandFactory {
 
     	register(MessageType.GAME_ABORTED, (controller, message) -> controller.onGameAborted(message.getNotice()));
 
+        register(MessageType.POST_GAME_OPTIONS,
+            (controller, message) -> controller.onPostGameOptions(message.getNotice()));
+
+        register(MessageType.WAITING_FOR_HOST,
+            (controller, message) -> controller.onWaitingForHost(message.getNotice()));
+
     	register(MessageType.ERROR, (controller, message) -> controller.onError(
                 message.getErrorCode(),
                 message.getNotice()
