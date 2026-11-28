@@ -138,7 +138,7 @@ public class ViewController {
         gameFrame.showWaitingRoom();
 
         // 3명이 모두 모이면 서버에 카테고리 목록 요청
-        if (message.getPlayerCount() >= 3) {
+        if (message.getPlayerCount() == 3) {
             try {
                 conn.requestCategories();
             } catch (IOException ex) {
