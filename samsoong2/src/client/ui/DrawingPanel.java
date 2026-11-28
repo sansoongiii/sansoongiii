@@ -21,6 +21,7 @@ public class DrawingPanel extends JPanel {
 
     public DrawingPanel() {
         setLayout(new BorderLayout(10, 10));
+        setBackground(new java.awt.Color(229, 231, 235));
 
         descriptionLabel = new JLabel("", SwingConstants.CENTER);
         canvasPanel = new CanvasPanel();
