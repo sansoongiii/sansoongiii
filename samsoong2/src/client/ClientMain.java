@@ -15,7 +15,9 @@ public class ClientMain {
 		GameClient client = new GameClient(gameController);
 
 		ConnectionController connectionController = new ConnectionController(client);
-		ViewController viewController = new ViewController(client, connectionController);
+		gameController.setConnectionController(connectionController);
+		
+		ViewController viewController = new ViewController(client, connectionController, gameController);
 
 		gameController.setViewController(viewController);
 

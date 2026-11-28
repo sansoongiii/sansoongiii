@@ -123,52 +123,5 @@ public class GameClient {
 		}
 	}
 
-	// 제출 버튼을 눌렀을 때 호출
-	public void submitDrawing(int roundNumber, byte[] drawingData) throws IOException {
-
-		sendDrawing(MessageType.SUBMIT_DRAWING, roundNumber, drawingData);
-	}
-
-// 작성 중인 그림을 저장할 때 호출
-	public void saveDrawingProgress(int roundNumber, byte[] drawingData) throws IOException {
-
-		sendDrawing(MessageType.SAVE_DRAWING_PROGRESS, roundNumber, drawingData);
-	}
-
-	private void sendDrawing(MessageType type, int roundNumber, byte[] drawingData) throws IOException {
-
-		if (roundNumber < 1) {
-			throw new IllegalArgumentException("라운드 번호는 1 이상이어야 합니다.");
-		}
-
-		if (drawingData == null || drawingData.length == 0) {
-			throw new IllegalArgumentException("전송할 그림 데이터가 없습니다.");
-		}
-
-		Message request = new Message();
-		request.setType(type);
-		request.setRoundNumber(roundNumber);
-		request.setDrawingData(drawingData);
-
-		send(request);
-	}
-
-	public void submitAnswer(int roundNumber, String submittedAnswer) throws IOException {
-
-		if (roundNumber < 1) {
-			throw new IllegalArgumentException("라운드 번호는 1 이상이어야 합니다.");
-		}
-
-		if (submittedAnswer == null || submittedAnswer.isBlank()) {
-			throw new IllegalArgumentException("정답을 입력해야 합니다.");
-		}
-
-		Message request = new Message();
-		request.setType(MessageType.SUBMIT_ANSWER);
-		request.setRoundNumber(roundNumber);
-		request.setSubmittedAnswer(submittedAnswer);
-
-		send(request);
-	}
 
 }
