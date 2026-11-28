@@ -71,7 +71,7 @@ public class TextWriterPanel extends JPanel {
     }
 
     private void saveProgress() {
-        if (progressListener != null && descriptionArea.isEnabled()) {
+        if (progressListener != null && descriptionArea.isEditable()) {
             progressListener.accept(descriptionArea.getText());
         }
     }
@@ -102,7 +102,7 @@ public class TextWriterPanel extends JPanel {
     }
     
     public void setInputEnabled(boolean enabled) {
-        descriptionArea.setEnabled(enabled);
+    	descriptionArea.setEditable(enabled);
         submitButton.setEnabled(enabled);
     }
 }

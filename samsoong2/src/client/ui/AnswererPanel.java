@@ -71,7 +71,7 @@ public class AnswererPanel extends JPanel {
     }
 
     private void saveProgress() {
-        if (progressListener != null && answerField.isEnabled()) {
+        if (progressListener != null && answerField.isEditable()) {
             progressListener.accept(answerField.getText());
         }
     }
@@ -124,7 +124,7 @@ public class AnswererPanel extends JPanel {
     }
     
     public void setInputEnabled(boolean enabled) {
-        answerField.setEnabled(enabled);
+        answerField.setEditable(enabled);
         submitButton.setEnabled(enabled);
     }
 }
