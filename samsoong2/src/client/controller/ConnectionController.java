@@ -47,7 +47,7 @@ public class ConnectionController {
             throw new IllegalArgumentException("방 코드를 입력해야 합니다.");
         }
         Message message = createMessage(MessageType.JOIN_ROOM);
-        message.setRoomCode(roomCode.trim());
+        message.setRoomCode(roomCode.trim().toUpperCase());
         send(message);
     }
 

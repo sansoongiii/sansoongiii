@@ -16,7 +16,7 @@ import client.command.EraseCommand;
 
 public class CanvasPanel extends JPanel {
 
-    public static final int CANVAS_WIDTH = 600;
+    public static final int CANVAS_WIDTH = 700;
     public static final int CANVAS_HEIGHT = 450;
 
     private final BufferedImage canvasImage;
