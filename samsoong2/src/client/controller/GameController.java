@@ -76,6 +76,14 @@ public class GameController {
         System.out.println("[게임 중단] " + notice);
     }
 
+    public void onPostGameOptions(String notice) {
+        System.out.println("[게임 재시작/종료 선택] " + notice);
+    }
+
+    public void onWaitingForHost(String notice) {
+        System.out.println("[방장 선택 대기] " + notice);
+    }
+
     public void onError(String errorCode, String notice) {
         System.out.println("[오류 " + errorCode + "] " + notice);
     }

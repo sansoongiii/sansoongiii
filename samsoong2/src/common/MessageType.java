@@ -20,6 +20,7 @@ public enum MessageType {
     CONTINUE_RESPONSE,
     LEAVE_ROOM,
     DISCONNECT,
+    RESTART_GAME,  //방장이 재시작 요청
 
     // 서버 → 클라이언트
     CONNECTED,
@@ -33,6 +34,9 @@ public enum MessageType {
     CONTINUE_STATUS,
     ROOM_LEFT,
     GAME_ABORTED,
+
+    POST_GAME_OPTIONS,  //방장에게 재시작/종료 선택차 표시
+    WAITING_FOR_HOST,  //3라운드 후 방장 결정 기다림
 
     ERROR,
     

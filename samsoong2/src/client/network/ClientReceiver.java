@@ -100,6 +100,11 @@ public class ClientReceiver implements Runnable {
                 client.receiveContinueStatus(message);
                 break;
 
+            case POST_GAME_OPTIONS:
+            case WAITING_FOR_HOST:
+                client.receivePhaseStarted(message);
+                break;
+
             case ERROR:
             case GAME_FINISHED:
             case ROOM_LEFT:

@@ -133,7 +133,13 @@ public final class Protocol {
             case ROOM_LEFT:
             case GAME_ABORTED:
             case TEST_MESSAGE:
+            case POST_GAME_OPTIONS:
+            case WAITING_FOR_HOST:
                 payload = buildData(message.getNotice());
+                break;
+
+            case RESTART_GAME:
+                payload = "";
                 break;
 
             default:
@@ -285,8 +291,14 @@ public final class Protocol {
             case ROOM_LEFT:
             case GAME_ABORTED:
             case TEST_MESSAGE:
+            case POST_GAME_OPTIONS:
+            case WAITING_FOR_HOST:
                 requireCount(values, 1);
                 message.setNotice(values[0]);
+                break;
+
+            case RESTART_GAME:
+                requireCount(values, 0);
                 break;
 
             default:

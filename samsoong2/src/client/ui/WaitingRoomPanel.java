@@ -39,6 +39,10 @@ public class WaitingRoomPanel extends JPanel {
         this.isHost = isHost;
     }
 
+    public boolean isHost() {
+        return isHost;
+    }
+
     // ROOM_UPDATED
     public void updateRoomStatus(String roomCode, int playerCount) {
         roomInfoLabel.setText("방 코드: " + roomCode + " | 인원: " + playerCount + "/3");

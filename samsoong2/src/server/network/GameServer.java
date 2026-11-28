@@ -153,7 +153,15 @@ public class GameServer implements GameMessageSender {
 		case CONTINUE_RESPONSE:
 			continueResponse(playerId, message);
 			break;
-
+		
+		case RESTART_GAME:
+    		restartGame(playerId);
+    		break;
+		
+		case GAME_FINISHED:
+    		endGame(playerId);
+    		break;
+	
 		default:
 			sendError(playerId, "INVALID_MESSAGE", "아직 연결하지 않은 요청입니다.");
 			break;
@@ -360,8 +368,18 @@ public class GameServer implements GameMessageSender {
 			System.out.println("게임 시작: " + room.getRoomCode() + " / 카테고리: " + room.getCategory() + " / 선택된 제시어: "
 					+ round.getAnswer());
 
-		} catch (IllegalStateException | IllegalArgumentException e) {
+		} catch (IllegalStateException e) {
+		    if (e.getMessage() != null && e.getMessage().contains("사용하지 않은 제시어")) {
+		        notifyRoomAbortedAndRemove(
+		            room,
+        		    "",
+           			"사용 가능한 제시어가 없어 게임이 종료되었습니다."
+        		);
+	        	return;
+    		}
 			sendError(playerId, "START_FAILED", e.getMessage());
+		} catch (IllegalArgumentException e) {
+    		sendError(playerId, "START_FAILED", e.getMessage());
 		}
 	}
 	
@@ -533,11 +551,25 @@ public class GameServer implements GameMessageSender {
 					GameRound nextRound = gameService.startNextRound(room);
 
 					if (nextRound == null) {
-						Message finished = new Message();
-						finished.setType(MessageType.GAME_FINISHED);
-						finished.setNotice("모든 라운드가 종료되었습니다.");
+						String hostPlayerId = room.getHostPlayerId();
 
-						sendToPlayers(playerIds, finished);
+					    // 방장에게 재시작 / 종료 선택 메시지
+    					Message options = new Message();
+    					options.setType(MessageType.POST_GAME_OPTIONS);
+    					options.setNotice("모든 라운드가 종료되었습니다. 다음 행동을 선택하세요.");
+
+					    sendTo(hostPlayerId, options);
+
+					    // 나머지 플레이어에게 대기 메시지
+					    Message waiting = new Message();
+					    waiting.setType(MessageType.WAITING_FOR_HOST);
+    					waiting.setNotice("방장이 다음 게임 진행 여부를 선택하고 있습니다.");
+
+					    for (Player player : room.getPlayers()) {
+					        if (!player.getPlayerId().equals(hostPlayerId)) {
+            					sendTo(player.getPlayerId(), waiting);
+        					}
+    					}
 					}
 				}
 
@@ -547,5 +579,92 @@ public class GameServer implements GameMessageSender {
 			}
 		}
 
+	}
+
+	private void restartGame(String playerId) {
+	    GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
+
+    	if (room == null) {
+        	sendError(playerId, "NOT_IN_ROOM", "참여 중인 방이 없습니다.");
+        	return;
+    	}
+		synchronized (gameService) {
+        	// 방장만 재시작 선택 가능
+        	if (!playerId.equals(room.getHostPlayerId())) {
+            	sendError(playerId, "NOT_HOST", "방장만 재시작할 수 있습니다.");
+            	return;
+        	}
+
+	        // 모든 라운드가 끝난 뒤에만 재시작 가능
+    	    if (!GamePhase.FINISHED.name().equals(room.getPhase())) {
+        	    sendError(playerId, "INVALID_PHASE", "게임이 모두 종료된 후 재시작할 수 있습니다.");
+            	return;
+        	}
+
+	        try {
+    	        // 기존 방 상태 초기화
+        	    room.resetForRestart();
+
+	            System.out.println("게임 재시작 준비: " + room.getRoomCode());
+
+	            // 방장에게만 카테고리 목록 전송
+    	        getCategories(playerId);
+
+        	    // 기존 방과 플레이어 정보 유지
+            	sendRoomUpdated(room);
+
+        	} catch (IllegalStateException e) {
+            	sendError(playerId, "RESTART_FAILED", e.getMessage());
+        	}
+		}
+	}
+
+	private void endGame(String playerId) {
+    	GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
+
+	    if (room == null) {
+    	    sendError(playerId, "NOT_IN_ROOM", "참여 중인 방이 없습니다.");
+        	return;
+    	}
+
+    	synchronized (gameService) {
+    	    if (!playerId.equals(room.getHostPlayerId())) {
+            	sendError(playerId, "NOT_HOST", "방장만 게임을 종료할 수 있습니다.");
+            	return;
+        	}
+
+	        if (!GamePhase.FINISHED.name().equals(room.getPhase())) {
+    	        sendError(playerId, "INVALID_PHASE", "모든 라운드가 종료된 후 게임을 종료할 수 있습니다.");
+        	    return;
+        	}
+
+	        // 남아 있는 타이머 취소
+    	    gameService.cancelRoomTimer(room);
+
+        	// 모든 플레이어에게 종료 알림
+        	Message finished = new Message();
+        	finished.setType(MessageType.GAME_FINISHED);
+        	finished.setNotice("참가자의 선택으로 게임이 종료되었습니다.");
+
+	        List<String> playerIds = new ArrayList<>();
+
+    	    for (Player player : room.getPlayers()) {
+        	    playerIds.add(player.getPlayerId());
+        	}
+
+	        sendToPlayers(playerIds, finished);
+
+    	    // 방 제거
+        	gameRoomService.removeRoom(room.getRoomCode());
+
+        	// 모든 플레이어 연결 종료
+        	for (String id : playerIds) {
+            	ClientHandler handler = clients.remove(id);
+            	if (handler != null) {
+                	handler.close();
+            	}
+        	}
+        	System.out.println("게임 종료 및 모든 플레이어 연결 해제: " + room.getRoomCode());
+    	}
 	}
 }

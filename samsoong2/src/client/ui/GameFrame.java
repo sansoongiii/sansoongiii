@@ -27,6 +27,8 @@ public class GameFrame extends JFrame {
     private final JLabel phaseLabel;
     private Timer countdownTimer;
 
+    private final PostGamePanel postGamePanel;
+
     public GameFrame() {
         setTitle("삼숭이 게임🙈🙉🐵");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -53,6 +55,7 @@ public class GameFrame extends JFrame {
         drawingPanel = new DrawingPanel();
         answererPanel = new AnswererPanel();
         resultPanel = new ResultPanel();
+        postGamePanel = new PostGamePanel();
 
         mainPanel.add(roomEntryPanel, "ROOM_ENTRY");
         mainPanel.add(waitingRoomPanel, "WAITING_ROOM");
@@ -60,6 +63,7 @@ public class GameFrame extends JFrame {
         mainPanel.add(drawingPanel, "DRAWER");
         mainPanel.add(answererPanel, "ANSWERER");
         mainPanel.add(resultPanel, "RESULT");
+        mainPanel.add(postGamePanel, "POST_GAME");
 
         add(infoPanel, BorderLayout.NORTH);
         add(mainPanel, BorderLayout.CENTER);
@@ -111,6 +115,10 @@ public class GameFrame extends JFrame {
 
     public ResultPanel getResultPanel() {
         return resultPanel;
+    }
+
+    public PostGamePanel getPostGamePanel() {
+        return postGamePanel;
     }
     
     public void showRoomEntry() {
@@ -171,6 +179,15 @@ public class GameFrame extends JFrame {
         );
 
         showScreen("RESULT");
+    }
+
+    public void showPostGame(boolean isHost, String notice) {
+        infoPanel.setVisible(false);
+
+        postGamePanel.setHostMode(isHost);
+        postGamePanel.setNotice(notice);
+
+        showScreen("POST_GAME");
     }
     
     public void startCountdown(long deadlineEpochMillis, Runnable onTimeout) {
