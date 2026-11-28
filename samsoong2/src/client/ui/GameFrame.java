@@ -124,6 +124,7 @@ public class GameFrame extends JFrame {
     }
     
     public void showTextWriter(int round, String word) {
+        infoPanel.setVisible(true);
         setRound(round);
         textWriterPanel.clearInput();
         textWriterPanel.setWord(word);
@@ -131,6 +132,7 @@ public class GameFrame extends JFrame {
     }
 
     public void showDrawing(int round, String description) {
+        infoPanel.setVisible(true);
         setRound(round);
         drawingPanel.clearCanvas();
         drawingPanel.setDescription(description);
@@ -139,6 +141,7 @@ public class GameFrame extends JFrame {
     }
 
     public void showAnswerer(int round, byte[] drawingData) {
+        infoPanel.setVisible(true);
         setRound(round);
         answererPanel.clearInput();
         answererPanel.setDrawing(drawingData);
@@ -153,9 +156,10 @@ public class GameFrame extends JFrame {
             String submittedAnswer,
             boolean correct) {
 
-    	stopCountdown();
+        infoPanel.setVisible(true);
+        stopCountdown();
         resetRemainingTime();
-    	
+
         setRound(round);
 
         resultPanel.setResult(
