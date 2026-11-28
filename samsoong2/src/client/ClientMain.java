@@ -3,60 +3,38 @@ package client;
 import java.io.IOException;
 
 import client.controller.ConnectionController;
+import client.controller.GameController;
 import client.controller.ViewController;
 import client.network.GameClient;
-import common.Message;
-import common.MessageType;
 
 public class ClientMain {
 
-    public static void main(String[] args) {
+	public static void main(String[] args) {
 
-        GameClient client = new GameClient();
+		GameController gameController = new GameController();
+		GameClient client = new GameClient(gameController);
 
-        try {
-            client.connect("127.0.0.1");
-            client.startReceiving();
+		ConnectionController connectionController = new ConnectionController(client);
+		ViewController viewController = new ViewController(client, connectionController);
 
-            // GUI 기반 게임 진행 시작
-            startGameGui(client);
-        } catch (IOException e) {
-            System.out.println(
-                    "연결 또는 입출력 오류: " + e.getMessage()
-            );
+		gameController.setViewController(viewController);
 
-            client.close();
-        }
-    }
+		try {
+			client.connect("127.0.0.1");
 
-    private static void startGameGui(GameClient client) {
-        ConnectionController conn = new ConnectionController(client);
-        ViewController viewController = new ViewController(client, conn);
+			if (!viewController.initGui()) {
+				client.close();
+				return;
+			}
 
-        if (!viewController.initGui()) {
-            return;
-        }
+			client.startReceiving();
 
-        Thread gameThread = new Thread(() -> {
-            try {
-                while (true) {
-                    Message message = client.waitForPhaseStarted();
-                    if (message == null) {
-                        viewController.closeGui();
-                        break;
-                    }
+		} catch (IOException e) {
+			System.out.println("연결 또는 입출력 오류: " + e.getMessage());
 
-                    viewController.handleMessage(message);
+			client.close();
+			viewController.closeGui();
+		}
+	}
 
-                    if (message.getType() == MessageType.GAME_FINISHED) {
-                        break;
-                    }
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        });
-
-        gameThread.start();
-    }
 }

@@ -1,63 +1,81 @@
 package client.controller;
 
 import java.util.List;
+import java.util.Objects;
 
 import client.view.ConsoleView;
 import common.Message;
 
 public class GameController {
-	
+
 	private final ConsoleView consoleView = new ConsoleView();
-	
+	private ViewController viewController;
+
+	public void setViewController(ViewController viewController) {
+		this.viewController = Objects.requireNonNull(viewController, "ViewController는 null일 수 없습니다.");
+	}
+
 	public void onConnected(String playerId) {
 		consoleView.onConnected(playerId);
 	}
-	
-	public void onCategoriesReceived(List <String> categories) {
-		consoleView.onCategoriesReceived(categories);
+
+	public void onCategoriesReceived(Message message) {
+		consoleView.onCategoriesReceived(message.getCategories());
+		viewController.handleMessage(message);
 	}
-	
-	public void onRoomUpdated(String roomCode, int playerCount, String category) {
-		consoleView.onRoomUpdated(roomCode, playerCount, category);
+
+	public void onRoomUpdated(Message message) {
+		consoleView.onRoomUpdated(message.getRoomCode(), message.getPlayerCount(), message.getCategory());
+		viewController.handleMessage(message);
 	}
-	
+
 	public void onPhaseStarted(Message message) {
 		consoleView.onPhaseStarted(message);
+		viewController.handleMessage(message);
 	}
-	
+
 	public void onRoundResult(Message message) {
-        consoleView.onRoundResult(message);
-    }
-	
-	public void onContinueStatus(int agreedCount, int playerCount, String notice) {
-        consoleView.onContinueStatus(agreedCount, playerCount, notice);
-    }
-	
-	public void onGameFinished(String notice) {
-	        consoleView.onGameFinished(notice);
+		consoleView.onRoundResult(message);
+		viewController.handleMessage(message);
 	}
-	
-	public void onRoomLeft(String notice) {
-        consoleView.onRoomLeft(notice);
-    }
-	
-	public void onGameAborted(String notice) {
-        consoleView.onGameAborted(notice);
-    }
-	
-	public void onPostGameOptions(String notice) {
-        consoleView.onPostGameOptions(notice);
-    }
 
-    public void onWaitingForHost(String notice) {
-        consoleView.onWaitingForHost(notice);
-    }
+	public void onContinueStatus(Message message) {
+		consoleView.onContinueStatus(message.getAgreedCount(), message.getPlayerCount(), message.getNotice());
+		viewController.handleMessage(message);
+	}
 
-    public void onError(String errorCode, String notice) {
-        consoleView.onError(errorCode, notice);
-    }
+	public void onGameFinished(Message message) {
+		consoleView.onGameFinished(message.getNotice());
+		viewController.handleMessage(message);
+	}
 
-    public void onDisconnected() {
-        consoleView.onDisconnected();
-    }
+	public void onRoomLeft(Message message) {
+		consoleView.onRoomLeft(message.getNotice());
+		viewController.handleMessage(message);
+	}
+
+	public void onGameAborted(Message message) {
+		consoleView.onGameAborted(message.getNotice());
+		viewController.handleMessage(message);
+	}
+
+	public void onPostGameOptions(Message message) {
+		consoleView.onPostGameOptions(message.getNotice());
+		viewController.handleMessage(message);
+	}
+
+	public void onWaitingForHost(Message message) {
+		consoleView.onWaitingForHost(message.getNotice());
+		viewController.handleMessage(message);
+	}
+
+	public void onError(Message message) {
+		consoleView.onError(message.getErrorCode(), message.getNotice());
+		viewController.handleMessage(message);
+	}
+
+	public void onDisconnected() {
+		consoleView.onDisconnected();
+		viewController.closeGui();
+	}
 }
