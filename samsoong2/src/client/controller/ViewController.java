@@ -14,19 +14,19 @@ import client.ui.GameFrame;
 import client.ui.RoomEntryPanel;
 import client.ui.WaitingRoomPanel;
 import common.Message;
-import common.MessageType;
 
 public class ViewController {
 
     private final GameClient client;
-    private final ConnectionController conn;
+    private final ConnectionController connectionController;
+    private final GameController gameController;
 
     private GameFrame gameFrame;
-    private int currentRound = 0;
-
-    public ViewController(GameClient client, ConnectionController conn) {
+    
+    public ViewController(GameClient client, ConnectionController connectionController, GameController gameController) {
         this.client = client;
-        this.conn = conn;
+        this.connectionController = connectionController;
+        this.gameController = gameController;
     }
 
     public boolean initGui() {
@@ -149,7 +149,7 @@ public class ViewController {
         // 3명이 모두 모이면 서버에 카테고리 목록 요청
         if (message.getPlayerCount() == 3) {
             try {
-                conn.requestCategories();
+                connectionController.requestCategories();
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
@@ -160,7 +160,6 @@ public class ViewController {
         String role = message.getRole();
         String phase = message.getPhase();
         int round = message.getRoundNumber();
-        currentRound = round;
 
         switch (phase) {
             case "TEXT_WRITING":
@@ -276,37 +275,25 @@ public class ViewController {
     private void connectProgressListeners() {
         //자동 저장 연결
         gameFrame.getTextWriterPanel().setProgressListener(description -> {
-            Message request = new Message();
-            request.setType(MessageType.SAVE_TEXT_PROGRESS);
-            request.setRoundNumber(currentRound);
-            request.setTextDescription(description);
-
-            try {
-                client.send(request);
+           
+        	try {
+            	 gameController.saveTextProgress(description);
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
         });
         gameFrame.getAnswererPanel().setProgressListener(answer -> {
-            Message request = new Message();
-            request.setType(MessageType.SAVE_ANSWER_PROGRESS);
-            request.setRoundNumber(currentRound);
-            request.setSubmittedAnswer(answer);
 
             try {
-                client.send(request);
+            	 gameController.saveAnswerProgress(answer);
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
         });
         gameFrame.getDrawingPanel().setProgressListener(drawingData -> {
-            Message request = new Message();
-            request.setType(MessageType.SAVE_DRAWING_PROGRESS);
-            request.setRoundNumber(currentRound);
-            request.setDrawingData(drawingData);
-
+        	
             try {
-                client.send(request);
+            	 gameController.saveDrawingProgress(drawingData);
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
@@ -324,13 +311,8 @@ public class ViewController {
                 return;
             }
 
-            Message request = new Message();
-            request.setType(MessageType.SUBMIT_TEXT);
-            request.setRoundNumber(currentRound);
-            request.setTextDescription(description);
-
             try {
-                client.send(request);
+            	gameController.submitText(description);
                 gameFrame.getTextWriterPanel().setInputEnabled(false);
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(gameFrame, "설명 전송에 실패했습니다.");
@@ -344,12 +326,7 @@ public class ViewController {
             try {
                 byte[] drawingData = gameFrame.getDrawingPanel().getDrawingData();
 
-                Message request = new Message();
-                request.setType(MessageType.SUBMIT_DRAWING);
-                request.setRoundNumber(currentRound);
-                request.setDrawingData(drawingData);
-
-                client.send(request);
+                gameController.submitDrawing(drawingData);
 
                 gameFrame.getDrawingPanel().getSubmitButton().setEnabled(false);
                 gameFrame.getDrawingPanel().setCanDraw(false);
@@ -370,13 +347,8 @@ public class ViewController {
                 return;
             }
 
-            Message request = new Message();
-            request.setType(MessageType.SUBMIT_ANSWER);
-            request.setRoundNumber(currentRound);
-            request.setSubmittedAnswer(answer);
-
             try {
-                client.send(request);
+            	gameController.submitAnswer(answer);
                 gameFrame.getAnswererPanel().setInputEnabled(false);
 
             } catch (IOException ex) {
@@ -389,19 +361,14 @@ public class ViewController {
         gameFrame.getResultPanel().getNextButton().addActionListener(e -> {
 
             System.out.println(
-                    "[버튼 클릭] 라운드=" + currentRound
+                    "[버튼 클릭] 라운드=" + gameController.getCurrentRound()
                             + " / 연결=" + client.isConnected()
             );
-
-            Message request = new Message();
-            request.setType(MessageType.CONTINUE_RESPONSE);
-            request.setRoundNumber(currentRound);
-            request.setAgree(true);
 
             try {
                 System.out.println("[다음 라운드] 전송 시작");
 
-                client.send(request);
+                gameController.continueToNextRound();
 
                 System.out.println("[다음 라운드] 전송 완료");
 
@@ -430,7 +397,7 @@ public class ViewController {
             try {
                 waitingPanel.setHost(true);
                 entryPanel.setButtonsEnabled(false);
-                conn.createRoom();
+                connectionController.createRoom();
             } catch (IOException ex) {
                 entryPanel.setButtonsEnabled(true);
                 JOptionPane.showMessageDialog(gameFrame, "방 생성 요청에 실패했습니다.");
@@ -449,7 +416,7 @@ public class ViewController {
             try {
                 waitingPanel.setHost(false);
                 entryPanel.setButtonsEnabled(false);
-                conn.joinRoom(roomCode.trim());
+                connectionController.joinRoom(roomCode.trim());
             } catch (IOException ex) {
                 entryPanel.setButtonsEnabled(true);
                 JOptionPane.showMessageDialog(gameFrame, "방 입장 요청에 실패했습니다.");
@@ -460,11 +427,8 @@ public class ViewController {
         // 카테고리 선택
         waitingPanel.setCategorySelectListener(selectedCategory -> {
             try {
-                conn.selectCategory(selectedCategory);
-
-                Message request = new Message();
-                request.setType(MessageType.START_GAME);
-                client.send(request);
+            	connectionController.selectCategory(selectedCategory);
+            	connectionController.startGame();
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(gameFrame, "카테고리 선택 전송에 실패했습니다.");
                 ex.printStackTrace();
@@ -474,7 +438,7 @@ public class ViewController {
         // 방 나가기
         waitingPanel.getLeaveRoomButton().addActionListener(e -> {
             try {
-                conn.leaveRoom();
+            	connectionController.leaveRoom();
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(gameFrame, "방 나가기 요청에 실패했습니다.");
                 ex.printStackTrace();
@@ -485,11 +449,9 @@ public class ViewController {
     private void connectPostGameButtons() {
         // 재시작 버튼
         gameFrame.getPostGamePanel().setRestartListener(() -> {
-            Message request = new Message();
-            request.setType(MessageType.RESTART_GAME);
 
             try {
-                client.send(request);
+            	connectionController.restartGame();
 
                 // 카테고리 선택을 기다리는 화면으로 변경
                 gameFrame.showPostGame(
@@ -519,11 +481,8 @@ public class ViewController {
                 return;
             }
 
-            Message request = new Message();
-            request.setType(MessageType.GAME_FINISHED);
-
             try {
-                client.send(request);
+            	connectionController.endGame();
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(
                     gameFrame,

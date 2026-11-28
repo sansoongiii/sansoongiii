@@ -90,10 +90,47 @@ public class ConnectionController {
         message.setSubmittedAnswer(submittedAnswer);
         send(message);
     }
+    
+    public void saveTextProgress(
+            int roundNumber, String description) throws IOException {
+        Message message = createMessage(MessageType.SAVE_TEXT_PROGRESS);
+        message.setRoundNumber(roundNumber);
+        message.setTextDescription(description);
+        send(message);
+    }
+
+    public void saveDrawingProgress(
+            int roundNumber, byte[] drawingData) throws IOException {
+        Message message = createMessage(MessageType.SAVE_DRAWING_PROGRESS);
+        message.setRoundNumber(roundNumber);
+        message.setDrawingData(drawingData);
+        send(message);
+    }
+
+    public void saveAnswerProgress(
+            int roundNumber, String answer) throws IOException {
+        Message message = createMessage(MessageType.SAVE_ANSWER_PROGRESS);
+        message.setRoundNumber(roundNumber);
+        message.setSubmittedAnswer(answer);
+        send(message);
+    }
+    
+    public void startGame() throws IOException {
+        send(createMessage(MessageType.START_GAME));
+    }
+
+    public void restartGame() throws IOException {
+        send(createMessage(MessageType.RESTART_GAME));
+    }
+
+    public void endGame() throws IOException {
+        send(createMessage(MessageType.GAME_FINISHED));
+    }
 
     // 라운드 종료 후 연장 요청
-    public void respondToContinue(boolean agree) throws IOException {
+    public void respondToContinue(int roundNumber, boolean agree) throws IOException {
         Message message = createMessage(MessageType.CONTINUE_RESPONSE);
+        message.setRoundNumber(roundNumber);
         message.setAgree(agree);
         send(message);
     }

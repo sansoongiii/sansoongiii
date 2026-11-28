@@ -1,94 +1,127 @@
 package client.controller;
 
-import java.util.*;
+import java.io.IOException;
+import java.util.Objects;
 
-import common.GamePhase;
+import client.view.ConsoleView;
 import common.Message;
-import common.PlayerRole;
 
 public class GameController {
 
-    public void onConnected(String playerId) {
-        System.out.println("[접속 완료] 내 ID: " + playerId);
-    }
+	private final ConsoleView consoleView = new ConsoleView();
+	private ViewController viewController;
+	private ConnectionController connectionController;
+	
+	private int currentRound;
+	
+	public int getCurrentRound() {
+	    return currentRound;
+	}
 
-    public void onCategoriesReceived(List<String> categories) {
-        System.out.println("[카테고리 목록] " + categories);
-    }
+	public void setViewController(ViewController viewController) {
+		this.viewController = Objects.requireNonNull(viewController, "ViewController는 null일 수 없습니다.");
+	}
+	
+	public void setConnectionController(ConnectionController connectionController) {
+	    this.connectionController = Objects.requireNonNull(
+	    		connectionController,
+	            "ConnectionController는 null일 수 없습니다."
+	    );
+	}
+	
+	public void submitText(String description) throws IOException {
+	    connectionController.submitText(currentRound, description);
+	}
 
-    public void onRoomUpdated(String roomCode, int playerCount, String category) {
-        System.out.printf("[방 정보] 방코드: %s | 인원: %d/3 | 카테고리: %s%n", roomCode, playerCount, category);
-    }
+	public void submitDrawing(byte[] drawingData) throws IOException {
+	    connectionController.submitDrawing(currentRound, drawingData);
+	}
 
-    // 첫 번째 순서에게만 제시어 출력
-    public void onPhaseStarted(Message message) {
-        String phase = message.getPhase();
-        String role = message.getRole();
+	public void submitAnswer(String answer) throws IOException {
+	    connectionController.submitAnswer(currentRound, answer);
+	}
 
-        System.out.printf("[라운드 %d 시작] 단계: %s | 내 역할: %s%n",
-                message.getRoundNumber(), phase, role);
+	public void saveTextProgress(String description) throws IOException {
+	    connectionController.saveTextProgress(currentRound, description);
+	}
 
-        if (GamePhase.TEXT_WRITING.name().equals(phase)) {
-            if (PlayerRole.TEXT_WRITER.name().equals(role)) { // WRITER 차례
-                System.out.println("제시어: " + message.getAnswer()); // WRITER 콘솔
-                System.out.println("제시어에 대한 설명을 작성하세요!");
-            } else {
-                System.out.println("설명을 작성 중입니다..."); // 그 외 플레이어 콘솔
-            }
-        } else if (GamePhase.DRAWING.name().equals(phase)) { // DRAWER 차례
-            if (PlayerRole.DRAWER.name().equals(role)) {
-                System.out.println(message.getTextDescription());
-                System.out.println("설명을 읽고 그림을 그리세요!");
-            } else {
-                System.out.println("그림을 그리는 중입니다...");
-            }
-        } else if (GamePhase.ANSWERING.name().equals(phase)) { // ANSWERER 차례
-            if (PlayerRole.ANSWERER.name().equals(role)) {
-            	// 그림 전달 (ViewController에서 담당)
-                System.out.println("그림을 보고 정답을 입력하세요!");
-            } else {
-                System.out.println("정답을 고민하는 중입니다...");
-            }
-        }
-    }
+	public void saveDrawingProgress(byte[] drawingData) throws IOException {
+	    connectionController.saveDrawingProgress(currentRound, drawingData);
+	}
 
-    public void onRoundResult(Message message) {
-        System.out.printf("[%d 라운드 결과] %s %n", message.getRoundNumber(), message.isCorrect() ? "정답!" : "오답!");
-        System.out.println(" - 제시어: " + message.getAnswer());
-        System.out.println(" - 설명: " + message.getTextDescription());
-        // 그림 전달
-        System.out.println(" - 제출한 답안: " + message.getSubmittedAnswer());
-    }
+	public void saveAnswerProgress(String answer) throws IOException {
+	    connectionController.saveAnswerProgress(currentRound, answer);
+	}
 
-    public void onContinueStatus(int agreedCount, int playerCount, String notice) {
-        System.out.printf("[게임 계속하기] %d/%d명 (%s)%n", agreedCount, playerCount, notice);
-    }
+	public void continueToNextRound() throws IOException {
+	    connectionController.respondToContinue(currentRound, true);
+	}
 
-    public void onGameFinished(String notice) {
-        System.out.println("[게임 종료] " + notice);
-    }
+	public void onConnected(String playerId) {
+		consoleView.onConnected(playerId);
+	}
 
-    public void onRoomLeft(String notice) {
-        System.out.println("[방 퇴장] " + notice);
-    }
+	public void onCategoriesReceived(Message message) {
+		consoleView.onCategoriesReceived(message.getCategories());
+		viewController.handleMessage(message);
+	}
 
-    public void onGameAborted(String notice) {
-        System.out.println("[게임 중단] " + notice);
-    }
+	public void onRoomUpdated(Message message) {
+		consoleView.onRoomUpdated(message.getRoomCode(), message.getPlayerCount(), message.getCategory());
+		viewController.handleMessage(message);
+	}
 
-    public void onPostGameOptions(String notice) {
-        System.out.println("[게임 재시작/종료 선택] " + notice);
-    }
+	public void onPhaseStarted(Message message) {
+	    currentRound = message.getRoundNumber();
+	   
+		consoleView.onPhaseStarted(message);
+		viewController.handleMessage(message);
+	}
 
-    public void onWaitingForHost(String notice) {
-        System.out.println("[방장 선택 대기] " + notice);
-    }
+	public void onRoundResult(Message message) {
+		currentRound = message.getRoundNumber();
+	    
+		consoleView.onRoundResult(message);
+		viewController.handleMessage(message);
+	}
 
-    public void onError(String errorCode, String notice) {
-        System.out.println("[오류 " + errorCode + "] " + notice);
-    }
+	public void onContinueStatus(Message message) {
+		consoleView.onContinueStatus(message.getAgreedCount(), message.getPlayerCount(), message.getNotice());
+		viewController.handleMessage(message);
+	}
 
-    public void onDisconnected() {
-        System.out.println("[서버 연결 종료] 서버와의 연결이 끊어졌습니다.");
-    }
+	public void onGameFinished(Message message) {
+		consoleView.onGameFinished(message.getNotice());
+		viewController.handleMessage(message);
+	}
+
+	public void onRoomLeft(Message message) {
+		consoleView.onRoomLeft(message.getNotice());
+		viewController.handleMessage(message);
+	}
+
+	public void onGameAborted(Message message) {
+		consoleView.onGameAborted(message.getNotice());
+		viewController.handleMessage(message);
+	}
+
+	public void onPostGameOptions(Message message) {
+		consoleView.onPostGameOptions(message.getNotice());
+		viewController.handleMessage(message);
+	}
+
+	public void onWaitingForHost(Message message) {
+		consoleView.onWaitingForHost(message.getNotice());
+		viewController.handleMessage(message);
+	}
+
+	public void onError(Message message) {
+		consoleView.onError(message.getErrorCode(), message.getNotice());
+		viewController.handleMessage(message);
+	}
+
+	public void onDisconnected() {
+		consoleView.onDisconnected();
+		viewController.closeGui();
+	}
 }
