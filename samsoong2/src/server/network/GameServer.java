@@ -84,6 +84,8 @@ public class GameServer implements GameMessageSender {
 		GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
 
 		if (room != null) {
+			boolean wasHost = playerId.equals(room.getHostPlayerId());
+
 			for (Player player : room.getPlayers()) {
 				if (player.getPlayerId().equals(playerId)) {
 					player.setConnected(false);
@@ -91,12 +93,12 @@ public class GameServer implements GameMessageSender {
 				}
 			}
 
-			// 게임이 진행 중이라면 게임 중단 후 방 삭제
 			if (room.getCurrentRound() != null && !GamePhase.FINISHED.name().equals(room.getPhase())) {
 				gameService.abortGame(room, playerId);
 				gameRoomService.removeRoom(room.getRoomCode());
+			} else if (wasHost) {
+				notifyRoomAbortedAndRemove(room, playerId, "방장이 나가 방이 종료되었습니다.");
 			} else {
-				// 대기실 등에서 나간 경우 해당 플레이어만 방에서 제거
 				gameRoomService.leaveRoom(playerId);
 				if (!room.getPlayers().isEmpty()) {
 					sendRoomUpdated(room);
@@ -364,25 +366,53 @@ public class GameServer implements GameMessageSender {
 	}
 	
 	private void leaveRoom(String playerId) {
-		GameRoom room = gameRoomService.leaveRoom(playerId);
+		GameRoom room = gameRoomService.findRoomByPlayerId(playerId);
 
 		if (room == null) {
 			sendError(playerId, "NOT_IN_ROOM", "참여 중인 방이 없습니다.");
 			return;
 		}
 
-		// 나간 사람에게 퇴장 완료 알림 전송
+		boolean wasHost = playerId.equals(room.getHostPlayerId());
+
+		if (wasHost && room.getCurrentRound() == null) {
+			notifyRoomAbortedAndRemove(room, playerId, "방장이 나가 방이 종료되었습니다.");
+
+			Message leftMsg = new Message();
+			leftMsg.setType(MessageType.ROOM_LEFT);
+			leftMsg.setNotice("방에서 나갔습니다.");
+			sendTo(playerId, leftMsg);
+			return;
+		}
+
+		gameRoomService.leaveRoom(playerId);
+
 		Message leftMsg = new Message();
 		leftMsg.setType(MessageType.ROOM_LEFT);
 		leftMsg.setNotice("방에서 나갔습니다.");
 		sendTo(playerId, leftMsg);
 
-		// 남은 사람들에게 인원 수 갱신 전송
 		if (!room.getPlayers().isEmpty()) {
 			sendRoomUpdated(room);
 		}
 
 		System.out.println("방 퇴장 완료: " + room.getRoomCode() + " / 남은 인원: " + room.getPlayers().size());
+	}
+
+	private void notifyRoomAbortedAndRemove(GameRoom room, String excludePlayerId, String notice) {
+		List<String> targets = new ArrayList<>();
+		for (Player player : room.getPlayers()) {
+			if (!player.getPlayerId().equals(excludePlayerId) && player.isConnected()) {
+				targets.add(player.getPlayerId());
+			}
+		}
+
+		gameRoomService.removeRoom(room.getRoomCode());
+
+		Message abortedMsg = new Message();
+		abortedMsg.setType(MessageType.GAME_ABORTED);
+		abortedMsg.setNotice(notice);
+		sendToPlayers(targets, abortedMsg);
 	}
 
 	private void handleGameRequest(String playerId, Message message) {
